@@ -23,7 +23,7 @@ namespace LiquidLabyrinth.ItemHelpers
         //private float MaxWobbleBase = 1f;
         public float WobbleSpeed = 1f;
         public float Recovery = 1f;
-        private float localFill = -1f;
+        private float _localFill = -1f;
         float wobbleAmountX;
         float wobbleAmountZ;
         float wobbleAmountToAddX;
@@ -35,8 +35,6 @@ namespace LiquidLabyrinth.ItemHelpers
         [Header("Bottle Properties")]
         public Animator itemAnimator;
 
-        public AudioSource itemAudio;
-
         public AudioClip openCorkSFX;
 
         public AudioClip closeCorkSFX;
@@ -44,6 +42,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public AudioClip changeModeSFX;
 
         public AudioClip glassBreakSFX;
+        public AudioClip liquidShakeSFX;
 
         public GameObject Liquid;
         public List<string> BottleProperties; // TODO: Add bottle properties class. API in mind, change `string` into the class.
@@ -51,13 +50,13 @@ namespace LiquidLabyrinth.ItemHelpers
         [Space(3f)]
         [Header("Liquid Properties")]
         public bool BreakBottle = false;
-        private NetworkVariable<int> playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-        private NetworkVariable<float> Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-        private NetworkVariable<bool> isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-        private NetworkVariable<Color> color = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-        private NetworkVariable<Color> lighterColor = new NetworkVariable<Color>(Color.blue, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-        [SerializeField] private NetworkVariable<BottleModes> mode = new NetworkVariable<BottleModes>(BottleModes.Open, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-        private int BottleModesLength = Enum.GetValues(typeof(BottleModes)).Length;
+        private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private NetworkVariable<Color> net_color = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private NetworkVariable<Color> net_lighterColor = new NetworkVariable<Color>(Color.blue, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private NetworkVariable<BottleModes> net_mode = new NetworkVariable<BottleModes>(BottleModes.Open, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private int _BottleModesLength = Enum.GetValues(typeof(BottleModes)).Length;
         public string GetModeString(BottleModes mode, bool isOpened)
         {
             if (mode == BottleModes.Open && isOpened)
@@ -78,7 +77,7 @@ namespace LiquidLabyrinth.ItemHelpers
             wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
             if (IsOwner)
             {
-                playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
+                net_playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
             }
         }
 
@@ -87,7 +86,7 @@ namespace LiquidLabyrinth.ItemHelpers
             base.DiscardItem();
             if (IsOwner)
             {
-                playerHeldByInt.Value = -1;
+                net_playerHeldByInt.Value = -1;
             }
         }
 
@@ -97,6 +96,7 @@ namespace LiquidLabyrinth.ItemHelpers
             Plugin.Logger.LogWarning("Interacted!");
         }
 
+
         public override void ItemActivate(bool used, bool buttonDown = true)
         {
             LMBToThrow = false;
@@ -104,13 +104,14 @@ namespace LiquidLabyrinth.ItemHelpers
             Holding = buttonDown;
             if (playerHeldBy == null) return;
             playerHeldBy.activatingItem = buttonDown;
-            switch (mode.Value)
+            // Gotta make this a handler somehow.
+            switch (net_mode.Value)
             {
                 case BottleModes.Open:
                     if (!buttonDown) break;
                     // This is in reverse because we will set the value to this after the logic is done. (If a desync happens, the way this is set up with no RPCS, its gonna fucking explode planet earth)
-                    itemAnimator.SetBool("CorkOpen", !isOpened.Value);
-                    if (!isOpened.Value)
+                    itemAnimator.SetBool("CorkOpen", !net_isOpened.Value);
+                    if (!net_isOpened.Value)
                     {
                         itemAudio.PlayOneShot(openCorkSFX);
                     }
@@ -121,12 +122,13 @@ namespace LiquidLabyrinth.ItemHelpers
                     // Do this last to not cause any network issues lmao.
                     if (IsOwner)
                     {
-                        isOpened.Value = !isOpened.Value;
+                        net_isOpened.Value = !net_isOpened.Value;
                         SetControlTipsForItem();
                     }
                     break;
                 case BottleModes.Drink:
-                    if (!isOpened.Value) break;
+                    if (!buttonDown) break;
+                    if (!net_isOpened.Value) break;
                     playerHeldBy.playerBodyAnimator.SetBool("useTZPItem", buttonDown);
                     //itemAnimator.SetBool("Drink", buttonDown);
                     break;
@@ -136,9 +138,19 @@ namespace LiquidLabyrinth.ItemHelpers
                     if (IsOwner && UnityEngine.Random.Range(1, 100) <= 25) BreakBottle = true;
                     break;
                 case BottleModes.Toast:
-                    if (playerHeldBy == null || !buttonDown || !IsOwner) break;
+                    if (!buttonDown || !IsOwner) break;
                     if (ToastCoroutine != null) break;
                     ToastCoroutine = StartCoroutine(Toast());
+                    break;
+                case BottleModes.Shake:
+                    if (!buttonDown) break;
+                    playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+                    wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
+                    wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
+                    float _start = UnityEngine.Random.Range(0, liquidShakeSFX.length);
+                    float _stop = UnityEngine.Random.Range(_start, liquidShakeSFX.length);
+                    AudioClip subclip = OtherUtils.MakeSubclip(liquidShakeSFX, _start, _stop);
+                    itemAudio.CrossFade(subclip, 1f, 1f);
                     break;
             }
             base.ItemActivate(used, buttonDown);
@@ -161,7 +173,9 @@ namespace LiquidLabyrinth.ItemHelpers
                     playerHeldBy.isClimbingLadder = false;
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     playerHeldBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
+                    EnablePhysics(true);
                     yield return new WaitForSeconds(0.5f);
+                    EnablePhysics(false);
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
                     playerHeldBy.activatingItem = false;
@@ -181,13 +195,13 @@ namespace LiquidLabyrinth.ItemHelpers
             if (!IsOwner) return;
             if (right)
             {
-                mode.Value -= 1;
-                if ((int)mode.Value == -1) mode.Value = (BottleModes)(BottleModesLength - 1);
+                net_mode.Value -= 1;
+                if ((int)net_mode.Value == -1) net_mode.Value = (BottleModes)(_BottleModesLength - 1);
             }
             else
             {
-                mode.Value += 1;
-                if ((int)mode.Value == BottleModesLength) mode.Value = 0;
+                net_mode.Value += 1;
+                if ((int)net_mode.Value == _BottleModesLength) net_mode.Value = 0;
             }
             itemAudio.PlayOneShot(changeModeSFX);
             SetControlTipsForItem();
@@ -196,6 +210,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
+            UnityEngine.Random.InitState(RoundManager.Instance.playersManager.randomMapSeed);
             if (IsHost || IsServer)
             {
                 scrapValue = itemProperties.creditsWorth;
@@ -215,42 +230,42 @@ namespace LiquidLabyrinth.ItemHelpers
                 float g = ((NameHash * 48271) % 256) / 255f; // Pseudo-random number generator
                 float b = ((NameHash * 69621) % 256) / 255f; // Pseudo-random number generator
                 float lightenValue = 1f; // Adjust this value to control how much the color is lightened
-                lighterColor.Value = new Color(Mathf.Clamp01(r + lightenValue),
+                net_lighterColor.Value = new Color(Mathf.Clamp01(r + lightenValue),
                                               Mathf.Clamp01(g + lightenValue),
                                               Mathf.Clamp01(b + lightenValue));
-                color.Value = new(r, g, b, 1);
-                if (localFill != -1)
+                net_color.Value = new(r, g, b, 1);
+                if (_localFill != -1)
                 {
-                    Fill.Value = localFill;
+                    net_Fill.Value = _localFill;
                 }
-                if (Fill.Value == -1)
+                if (net_Fill.Value == -1)
                 {
-                    Fill.Value = UnityEngine.Random.Range(0f, 1f);
+                    net_Fill.Value = UnityEngine.Random.Range(0f, 1f);
                     Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
                 }
             }
             // ^ This part above only runs on server to sync initialization.
-            if (playerHeldByInt.Value != -1)
+            if (net_playerHeldByInt.Value != -1)
             {
-                playerHeldBy = StartOfRound.Instance.allPlayerScripts[playerHeldByInt.Value];
+                playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
             }
             // Sync to all clients.
-            gameObject.GetComponent<MeshRenderer>().material.color = new Color(color.Value.g, color.Value.r, color.Value.b);
+            gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
             if (Liquid != null)
             {
                 rend = Liquid.GetComponent<MeshRenderer>();
-                rend.material.SetColor("_LiquidColor", color.Value);
-                rend.material.SetColor("_SurfaceColor", lighterColor.Value);
-                rend.material.SetFloat("_Fill", Fill.Value);
+                rend.material.SetColor("_LiquidColor", net_color.Value);
+                rend.material.SetColor("_SurfaceColor", net_lighterColor.Value);
+                rend.material.SetFloat("_Fill", net_Fill.Value);
             }
-            itemAnimator.SetBool("CorkOpen", isOpened.Value);
+            itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         }
 
         public override void LoadItemSaveData(int saveData)
         {
             base.LoadItemSaveData(saveData);
             Plugin.Logger.LogWarning($"LoadItemSaveData called! Got: {saveData}");
-            localFill = (saveData / 100f);
+            _localFill = (saveData / 100f);
             if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
             if (ES3.KeyExists("shipBottleData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
             {
@@ -274,9 +289,9 @@ namespace LiquidLabyrinth.ItemHelpers
         public override int GetItemDataToSave()
         {
             Dictionary<float, string> data = new Dictionary<float, string>();
-            data.Add((int)(Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
+            data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
             SaveUtils.AddToQueue<PotionBottle>(GetType(), data);
-            return (int)(Fill.Value * 100f);
+            return (int)(net_Fill.Value * 100f);
         }
 
 
@@ -296,7 +311,7 @@ namespace LiquidLabyrinth.ItemHelpers
             RaycastHit[] hits = Physics.SphereCastAll(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 10f, 80f, 1048576);
 
             //END OF REVIVE TEST
-            if (hits.Count() > 0)
+            if (hits.Count() > 0 && Plugin.Instance.RevivePlayer.Value)
             {
                 foreach (RaycastHit hit in hits)
                 {
@@ -312,19 +327,17 @@ namespace LiquidLabyrinth.ItemHelpers
             // TODO: Glass shatter effect and puddle instansiation
             AudioSource.PlayClipAtPoint(glassBreakSFX, gameObject.transform.position);
             AudioSource.PlayClipAtPoint(itemProperties.dropSFX, gameObject.transform.position);
-            if (IsServer || IsHost) Destroy(gameObject);
+            if (IsServer || IsHost) Destroy(gameObject, .5f);
         }
 
-        public override void OnHitGround()
+        public override void OnCollisionEnter(Collision collision)
         {
-            // Currently used for debugging
             LMBToThrow = false;
             if (isThrown.Value && BreakBottle)
             {
                 HitGround_ServerRpc();
             }
-            // Run after so Throwing isn't set to false.
-            base.OnHitGround();
+            base.OnCollisionEnter(collision);
         }
 
 
@@ -333,7 +346,7 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             base.SetControlTipsForItem();
             string[] allLines;
-            string modeString = GetModeString(mode.Value, isOpened.Value);
+            string modeString = GetModeString(net_mode.Value, net_isOpened.Value);
             allLines = new string[]{
                 $"BottleType: {bottleType}",
                 $"Mode: {modeString}"
@@ -350,24 +363,24 @@ namespace LiquidLabyrinth.ItemHelpers
             if (itemUsedUp) return;
 
 
-            MaxWobble = Fill.Value * 0.2f;
-            if (IsOwner && playerHeldBy != null && mode.Value == BottleModes.Drink && Holding && isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
+            MaxWobble = net_Fill.Value * 0.2f;
+            if (IsOwner && playerHeldBy != null && net_mode.Value == BottleModes.Drink && Holding && net_isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
             {
-                Fill.Value = Mathf.Lerp(Fill.Value, 0f, Time.deltaTime * 0.5f);
-                Plugin.Logger.LogWarning($"Started drinking! ({Fill.Value})");
+                net_Fill.Value = Mathf.Lerp(net_Fill.Value, 0f, Time.deltaTime * 0.5f);
+                Plugin.Logger.LogWarning($"Started drinking! ({net_Fill.Value})");
             }
-            if (Fill.Value <= 0.05) // fun
+            if (net_Fill.Value <= 0.05) // fun
             {
                 if (IsOwner)
                 {
-                    Fill.Value = 0f;
+                    net_Fill.Value = 0f;
                     rend.material.SetFloat("_Fill", 0f);
                 }
                 itemUsedUp = true;
                 return;
             }
 
-            rend.material.SetFloat("_Fill", Fill.Value);
+            rend.material.SetFloat("_Fill", net_Fill.Value);
             Wobble();
         }
 

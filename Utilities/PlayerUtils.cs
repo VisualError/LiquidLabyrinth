@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace LiquidLabyrinth.Utilities
 {
-    class PlayerUtils
+	internal class PlayerUtils
     {
 
 		internal static void RotateToObject(PlayerControllerB player, GameObject targetObject)

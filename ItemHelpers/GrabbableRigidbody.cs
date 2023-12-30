@@ -1,5 +1,8 @@
-﻿using LiquidLabyrinth.Utilities;
+﻿using LiquidLabyrinth.Events;
+using LiquidLabyrinth.Utilities;
 using UnityEngine;
+using UnityEngine.Events;
+
 namespace LiquidLabyrinth.ItemHelpers
 {
     [RequireComponent(typeof(Rigidbody))]
@@ -7,18 +10,31 @@ namespace LiquidLabyrinth.ItemHelpers
     // Taken from: https://gist.github.com/EvaisaDev/aaf727b2aeb6733793c89a887f8f8615
     class GrabbableRigidbody : GrabbableObject
     {
+
+        // EVENTS:
+        public UnityEvent OnStart = new UnityEvent();
+        public UnityEvent OnUpdate = new UnityEvent();
+        public UnityEvent OnDiscardItem = new UnityEvent();
+        public UnityEvent OnEquipItem = new UnityEvent();
+        public UnityEvent OnCollission = new UnityEvent();
+        public UnityEvent OnInteractLocal = new UnityEvent();
+        public UnityEvent OnInteractGlobal = new UnityEvent();
+
+
         public float gravity = 9.8f;
         internal Rigidbody rb;
         public AudioSource itemAudio;
+        public float itemMass = 1f;
         public override void Start()
         {
+            OnStart?.Invoke();
             rb = GetComponent<Rigidbody>();
             rb.useGravity = false;
+            rb.mass = itemMass;
             // force some properties which might be missconfigured
             itemProperties.itemSpawnsOnGround = false;
             base.Start();
             EnablePhysics(true);
-            itemAudio = gameObject.GetComponent<AudioSource>();
         }
 
         public new void EnablePhysics(bool enable)
@@ -37,6 +53,7 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public override void Update()
         {
+            OnUpdate?.Invoke();
             // hax
             fallTime = 1.0f;
             reachedFloorTarget = true;
@@ -57,7 +74,7 @@ namespace LiquidLabyrinth.ItemHelpers
                 {
                     rb.useGravity = false;
 
-                    rb.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
+                    rb.AddForce(Vector3.down * gravity * rb.mass, ForceMode.Acceleration);
                 }
                 else
                 {
@@ -85,6 +102,7 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public virtual void OnCollisionEnter(Collision collision)
         {
+            OnCollission?.Invoke();
             rb.isKinematic = false;
             float rigidBodyMangintude = rb.velocity.magnitude;
             if (collision.gameObject.tag == "Player") 
@@ -117,13 +135,21 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void EquipItem()
         {
             // remove parent object
+            OnEquipItem?.Invoke();
             base.EquipItem();
             itemAudio.pitch = 1f;
             transform.parent = null;
         }
 
+        public override void DiscardItem()
+        {
+            OnDiscardItem?.Invoke();
+            base.DiscardItem();
+        }
+
         public override void InteractItem()
         {
+            OnInteractLocal?.Invoke();
             base.InteractItem();
             itemAudio.pitch = 1f;
         }

@@ -16,6 +16,7 @@
           "UnityEngine.Modules": "2022.3.9",
           "Assembly-CSharp-firstpass": "0.0.0.0",
           "LethalLib": "1.0.0.0",
+          "LethalSettings": "1.1.0.0",
           "Unity.Netcode.Runtime": "0.0.0.0",
           "Assembly-CSharp": "0.0.0.0"
         },
@@ -398,6 +399,14 @@
           "LethalLib.dll": {
             "assemblyVersion": "1.0.0.0",
             "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "LethalSettings/1.1.0.0": {
+        "runtime": {
+          "LethalSettings.dll": {
+            "assemblyVersion": "1.1.0.0",
+            "fileVersion": "1.1.0.0"
           }
         }
       },
@@ -968,6 +977,11 @@
       "sha512": ""
     },
     "LethalLib/1.0.0.0": {
+      "type": "reference",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "LethalSettings/1.1.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

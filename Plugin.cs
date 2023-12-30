@@ -1,6 +1,9 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using LethalSettings.UI;
+using LethalSettings.UI.Components;
 using LiquidLabyrinth.Patches;
 using LiquidLabyrinth.Utilities;
 using System.Reflection;
@@ -11,14 +14,16 @@ using UnityEngine;
 namespace LiquidLabyrinth
 {
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
-    [BepInDependency("evaisa.lethallib")]
+    [BepInDependency("evaisa.lethallib", BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency("com.willis.lc.lethalsettings", BepInDependency.DependencyFlags.HardDependency)]
     [BepInProcess("Lethal Company.exe")]
-    public class Plugin : BaseUnityPlugin
+    internal class Plugin : BaseUnityPlugin
     {
 
         // TODO: USE SaveLocalPlayerValues METHOD FROM GAMENETWORKMANAGER TO SAVE THE BOTTLE NAMES!
         internal static new ManualLogSource Logger;
         internal static Plugin Instance;
+        internal ConfigEntry<bool> RevivePlayer;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
 
 
@@ -83,6 +88,23 @@ namespace LiquidLabyrinth
             Harmony.PatchAll(typeof(StartOfRoundPatch));
             Harmony.PatchAll(typeof(PlayerControllerBPatch));
             Harmony.PatchAll(typeof(GameNetworkManagerPatch));
+
+            RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", false, "Bottle revive functionality, for testing purposes");
+
+            ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
+            {
+                Name = PluginInfo.PLUGIN_NAME,
+                Id = PluginInfo.PLUGIN_GUID,
+                Description = "Liquid Labyrinth: Mysterious liquids",
+                MenuComponents = new MenuComponent[]
+                {
+                    new ToggleComponent
+                    {
+                        Text = "Enable Bottle Revive",
+                        OnValueChanged = (self, value) => RevivePlayer.Value = value
+                    }
+                }
+            });
         }
     }
 }

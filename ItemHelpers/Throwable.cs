@@ -4,11 +4,16 @@ using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace LiquidLabyrinth.ItemHelpers
 {
     class Throwable : GrabbableRigidbody
     {
+
+        // EVENTS:
+        public event UnityAction onThrowItem;
+
         public PlayerControllerB playerThrownBy;
         private float t = 0f;
         public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -121,6 +126,7 @@ namespace LiquidLabyrinth.ItemHelpers
             base.ItemInteractLeftRight(right);
             if (right)
             {
+                OnEquipItem.AddListener(() => { });
                 return;
             }
         }
@@ -137,6 +143,7 @@ namespace LiquidLabyrinth.ItemHelpers
             playerThrownBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
             playerThrownBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
             yield return new WaitForSeconds(.25f);
+            onThrowItem?.Invoke();
             oldRotation = gameObject.transform.rotation;
             playerThrownBy.DiscardHeldObject();
             t = 0f;
