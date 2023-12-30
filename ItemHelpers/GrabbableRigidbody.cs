@@ -1,5 +1,6 @@
 ﻿using LiquidLabyrinth.Events;
 using LiquidLabyrinth.Utilities;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -67,7 +68,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public virtual void FixedUpdate()
         {
             // handle gravity if rigidbody is enabled
-            if (IsHost)
+            if (IsHost || IsServer)
             {
                 if(floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
                 {
@@ -105,24 +106,34 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public virtual void OnCollisionEnter(Collision collision)
         {
-            OnCollision?.Invoke();
-            float rigidBodyMangintude = rb.velocity.magnitude;
-            if (collision.gameObject.tag == "Player") 
+            if (!IsHost || !IsServer) return;
+            if (IsClient)
             {
-                // this aint workin chief.
-                Rigidbody playerRb = collision.gameObject.GetComponentInParent<Rigidbody>();
-                if (playerRb != null)
-                {
-                    Vector3 torqueDirection = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
-                    float torqueAmount = 10f; // Adjust this value to change the amount of rotation
-                    rb.AddTorque(torqueDirection * torqueAmount);
-                }
+                OnCollision_ClientRpc(collision.gameObject.tag, rb.velocity.magnitude);
+            }
+            else
+            {
+                OnCollision_ServerRpc(collision.gameObject.tag, rb.velocity.magnitude);
+            }
+        }
+
+        [ServerRpc]
+        public void OnCollision_ServerRpc(string objectTag, float rigidBodyMagnitude)
+        {
+            OnCollision_ClientRpc(objectTag, rigidBodyMagnitude);
+        } 
+
+        [ClientRpc]
+        public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
+        {
+            OnCollision?.Invoke();
+            if (objectTag == "Player")
+            {
                 return;
             }
-            float pitch = OtherUtils.mapValue(rigidBodyMangintude, 0.8f, 10f, 0.8f, 1.5f);
+            float pitch = OtherUtils.mapValue(rigidBodyMagnitude, 0.8f, 10f, 0.8f, 1.5f);
             itemAudio.pitch = pitch;
             itemAudio.PlayOneShot(itemProperties.dropSFX);
-            //transform.SetParent(collision.transform);
         }
 
         public override void EquipItem()

@@ -32,7 +32,7 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             base.Start();
 
-            if (IsHost)
+            if (IsHost || IsServer)
             {
                 rb.isKinematic = false;
                 rb.AddForce(gameObject.transform.forward * 2f, ForceMode.Impulse);
@@ -77,11 +77,11 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public override void Update()
         {
-            if (isKinematic.Value != rb.isKinematic && !IsHost)
+            if (isKinematic.Value != rb.isKinematic && !(IsHost || IsServer))
             {
                 rb.isKinematic = isKinematic.Value;
             }
-            else if (IsHost && rb.isKinematic != isKinematic.Value)
+            else if ((IsHost || IsServer) && rb.isKinematic != isKinematic.Value)
             {
                 isKinematic.Value = rb.isKinematic;
             }
@@ -92,7 +92,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void FixedUpdate()
         {
             base.FixedUpdate();
-            if (IsHost)
+            if (IsHost || IsServer)
             {
                 if (StartOfRound.Instance.timeSinceRoundStarted > 2f)
                 {

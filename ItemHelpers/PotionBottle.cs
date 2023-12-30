@@ -310,7 +310,6 @@ namespace LiquidLabyrinth.ItemHelpers
             Dictionary<float, string> data = new Dictionary<float, string>();
             data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
             SaveUtils.AddToQueue<PotionBottle>(GetType(), data);
-            OtherUtils.TryDestroyRigidBody(gameObject);
             return (int)(net_Fill.Value * 100f);
         }
 
