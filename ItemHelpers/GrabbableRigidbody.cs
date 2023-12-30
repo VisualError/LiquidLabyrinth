@@ -16,11 +16,10 @@ namespace LiquidLabyrinth.ItemHelpers
         public UnityEvent OnUpdate = new UnityEvent();
         public UnityEvent OnDiscardItem = new UnityEvent();
         public UnityEvent OnEquipItem = new UnityEvent();
-        public UnityEvent OnCollission = new UnityEvent();
+        public UnityEvent OnCollision = new UnityEvent();
         public UnityEvent OnInteractLocal = new UnityEvent();
         public UnityEvent OnInteractGlobal = new UnityEvent();
-
-
+        public bool floatWhileOrbiting;
         public float gravity = 9.8f;
         internal Rigidbody rb;
         public AudioSource itemAudio;
@@ -70,10 +69,14 @@ namespace LiquidLabyrinth.ItemHelpers
             // handle gravity if rigidbody is enabled
             if (IsHost)
             {
+                if(floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
+                {
+                    rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
+                    return;
+                }
                 if (!rb.isKinematic && !isHeld)
                 {
                     rb.useGravity = false;
-
                     rb.AddForce(Vector3.down * gravity * rb.mass, ForceMode.Acceleration);
                 }
                 else
@@ -102,8 +105,7 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public virtual void OnCollisionEnter(Collision collision)
         {
-            OnCollission?.Invoke();
-            rb.isKinematic = false;
+            OnCollision?.Invoke();
             float rigidBodyMangintude = rb.velocity.magnitude;
             if (collision.gameObject.tag == "Player") 
             {
@@ -120,7 +122,33 @@ namespace LiquidLabyrinth.ItemHelpers
             float pitch = OtherUtils.mapValue(rigidBodyMangintude, 0.8f, 10f, 0.8f, 1.5f);
             itemAudio.pitch = pitch;
             itemAudio.PlayOneShot(itemProperties.dropSFX);
+            //transform.SetParent(collision.transform);
         }
+
+        public override void EquipItem()
+        {
+            // remove parent object
+            OnEquipItem?.Invoke();
+            base.EquipItem();
+            itemAudio.pitch = 1f;
+            rb.isKinematic = true;
+            transform.parent = null;
+        }
+
+        public override void DiscardItem()
+        {
+            OnDiscardItem?.Invoke();
+            rb.isKinematic = false;
+            base.DiscardItem();
+        }
+
+        public override void InteractItem()
+        {
+            OnInteractLocal?.Invoke();
+            base.InteractItem();
+            itemAudio.pitch = 1f;
+        }
+
 
         public override void FallWithCurve()
         {
@@ -130,28 +158,6 @@ namespace LiquidLabyrinth.ItemHelpers
         public void FallToGround()
         {
             // stub, we do not need this.
-        }
-
-        public override void EquipItem()
-        {
-            // remove parent object
-            OnEquipItem?.Invoke();
-            base.EquipItem();
-            itemAudio.pitch = 1f;
-            transform.parent = null;
-        }
-
-        public override void DiscardItem()
-        {
-            OnDiscardItem?.Invoke();
-            base.DiscardItem();
-        }
-
-        public override void InteractItem()
-        {
-            OnInteractLocal?.Invoke();
-            base.InteractItem();
-            itemAudio.pitch = 1f;
         }
     }
 }

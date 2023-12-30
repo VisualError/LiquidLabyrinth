@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace LiquidLabyrinth.Utilities
@@ -9,23 +7,15 @@ namespace LiquidLabyrinth.Utilities
     {
         private static Dictionary<int, int> _masksByLayer;
 
-        internal static AudioClip MakeSubclip(AudioClip clip, float start, float stop)
+        internal static bool TryDestroyRigidBody(GameObject gameObject)
         {
-            /* Create a new audio clip */
-            int frequency = clip.frequency;
-            float timeLength = stop - start;
-            int samplesLength = (int)(frequency * timeLength);
-            AudioClip newClip = AudioClip.Create(clip.name + "-sub", samplesLength, 1, frequency, false);
-
-            /* Create a temporary buffer for the samples */
-            float[] data = new float[samplesLength];
-            /* Get the data from the original clip */
-            clip.GetData(data, (int)(frequency * start));
-            /* Transfer the data to the new clip */
-            newClip.SetData(data, 0);
-
-            /* Return the sub clip */
-            return newClip;
+            if (gameObject.TryGetComponent(out Rigidbody body))
+            {
+                Plugin.Logger.LogWarning("destroying rigid");
+                UnityEngine.Object.Destroy(body);
+                return true;
+            }
+            return false;
         }
 
         internal static void GenerateLayerMap()

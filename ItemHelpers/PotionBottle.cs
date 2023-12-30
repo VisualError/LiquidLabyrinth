@@ -1,6 +1,7 @@
 ﻿using GameNetcodeStuff;
 using LiquidLabyrinth.Enums;
 using LiquidLabyrinth.Utilities;
+using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -127,7 +128,6 @@ namespace LiquidLabyrinth.ItemHelpers
                     }
                     break;
                 case BottleModes.Drink:
-                    if (!buttonDown) break;
                     if (!net_isOpened.Value) break;
                     playerHeldBy.playerBodyAnimator.SetBool("useTZPItem", buttonDown);
                     //itemAnimator.SetBool("Drink", buttonDown);
@@ -144,17 +144,36 @@ namespace LiquidLabyrinth.ItemHelpers
                     break;
                 case BottleModes.Shake:
                     if (!buttonDown) break;
-                    playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
-                    wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
-                    wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
-                    float _start = UnityEngine.Random.Range(0, liquidShakeSFX.length);
-                    float _stop = UnityEngine.Random.Range(_start, liquidShakeSFX.length);
-                    AudioClip subclip = OtherUtils.MakeSubclip(liquidShakeSFX, _start, _stop);
-                    itemAudio.CrossFade(subclip, 1f, 1f);
+                    CoroutineHandler.Instance.NewCoroutine(ShakeBottle());
                     break;
             }
             base.ItemActivate(used, buttonDown);
         }
+
+        private IEnumerator ShakeBottle()
+        {
+            while (Holding)
+            {
+                playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+                AnimatorStateInfo stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
+                if (!stateInfo.IsName("ShakeItem"))
+                {
+                    yield return null;
+                    continue;
+                }
+                float animationDuration = stateInfo.length;
+                float _start = UnityEngine.Random.Range(0, liquidShakeSFX.length - animationDuration);
+                float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
+                AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
+                itemAudio.PlayOneShot(subclip);
+                CoroutineHandler.Instance.NewCoroutine(itemAudio.FadeOut(1f));
+                wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
+                wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
+                yield return new WaitForSeconds(animationDuration-0.35f);
+            }
+            yield break;
+        }
+
         // this shit don't work.
         private Coroutine ToastCoroutine;
         private IEnumerator Toast()
@@ -173,9 +192,9 @@ namespace LiquidLabyrinth.ItemHelpers
                     playerHeldBy.isClimbingLadder = false;
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     playerHeldBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
-                    EnablePhysics(true);
-                    yield return new WaitForSeconds(0.5f);
                     EnablePhysics(false);
+                    yield return new WaitForSeconds(0.5f);
+                    EnablePhysics(true);
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
                     playerHeldBy.activatingItem = false;
@@ -210,7 +229,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void OnNetworkSpawn()
         {
             base.OnNetworkSpawn();
-            UnityEngine.Random.InitState(RoundManager.Instance.playersManager.randomMapSeed);
+            floatWhileOrbiting = true;
             if (IsHost || IsServer)
             {
                 scrapValue = itemProperties.creditsWorth;
@@ -291,6 +310,7 @@ namespace LiquidLabyrinth.ItemHelpers
             Dictionary<float, string> data = new Dictionary<float, string>();
             data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
             SaveUtils.AddToQueue<PotionBottle>(GetType(), data);
+            OtherUtils.TryDestroyRigidBody(gameObject);
             return (int)(net_Fill.Value * 100f);
         }
 

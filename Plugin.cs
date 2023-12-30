@@ -24,6 +24,7 @@ namespace LiquidLabyrinth
         internal static new ManualLogSource Logger;
         internal static Plugin Instance;
         internal ConfigEntry<bool> RevivePlayer;
+        internal ConfigEntry<bool> NoGravityInOrbit;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
 
 
@@ -86,11 +87,12 @@ namespace LiquidLabyrinth
 
             OtherUtils.GenerateLayerMap();
             Harmony.PatchAll(typeof(StartOfRoundPatch));
-            Harmony.PatchAll(typeof(PlayerControllerBPatch));
+            //Harmony.PatchAll(typeof(PlayerControllerBPatch));
+            //Harmony.PatchAll(typeof(HUDManagerPatch));
             Harmony.PatchAll(typeof(GameNetworkManagerPatch));
 
             RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", false, "Bottle revive functionality, for testing purposes");
-
+            NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "ORBITTT");
             ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
             {
                 Name = PluginInfo.PLUGIN_NAME,
@@ -100,8 +102,13 @@ namespace LiquidLabyrinth
                 {
                     new ToggleComponent
                     {
-                        Text = "Enable Bottle Revive",
+                        Text = RevivePlayer.Description.Description,
                         OnValueChanged = (self, value) => RevivePlayer.Value = value
+                    },
+                    new ToggleComponent
+                    {
+                        Text = NoGravityInOrbit.Description.Description,
+                        OnValueChanged = (self, value) => NoGravityInOrbit.Value = value
                     }
                 }
             });

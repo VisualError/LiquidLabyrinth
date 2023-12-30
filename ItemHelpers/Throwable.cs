@@ -35,7 +35,7 @@ namespace LiquidLabyrinth.ItemHelpers
             if (IsHost)
             {
                 rb.isKinematic = false;
-                //rb.AddForce(gameObject.transform.forward * throwForce, ForceMode.Impulse);
+                rb.AddForce(gameObject.transform.forward * 2f, ForceMode.Impulse);
                 t = 0f;
                 isThrown.Value = true;
             }
@@ -94,6 +94,11 @@ namespace LiquidLabyrinth.ItemHelpers
             base.FixedUpdate();
             if (IsHost)
             {
+                if (StartOfRound.Instance.timeSinceRoundStarted > 2f)
+                {
+                    rb.isKinematic = !StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase;
+                }
+                isKinematic.Value = rb.isKinematic;
                 if (rb.isKinematic && !isHeld)
                 {
                     rb.position = gameObject.transform.position;
@@ -107,8 +112,6 @@ namespace LiquidLabyrinth.ItemHelpers
                         Quaternion targetRotation = Quaternion.LookRotation(rb.velocity);
                         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
                         oldRotation = transform.rotation;
-                        // Apply the rotation
-                        //rb.AddRelativeTorque(torqueDirection*10f,ForceMode.Impulse);
                     }
 
                     t += Time.deltaTime;
@@ -126,7 +129,6 @@ namespace LiquidLabyrinth.ItemHelpers
             base.ItemInteractLeftRight(right);
             if (right)
             {
-                OnEquipItem.AddListener(() => { });
                 return;
             }
         }
@@ -136,6 +138,7 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             //TODO: Throwing animation.
             //previouslyHeld.twoHanded = true;
+            if (!StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase) yield break;
             yield return new WaitUntil(() => !Holding);
             if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
             playerThrownBy.inSpecialInteractAnimation = true;
@@ -168,7 +171,6 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             base.EquipItem();
             isThrown.Value = false;
-            rb.isKinematic = false;
             t = 0f;
         }
 
