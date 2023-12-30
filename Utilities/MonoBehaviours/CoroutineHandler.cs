@@ -41,7 +41,7 @@ namespace LiquidLabyrinth.Utilities.MonoBehaviours
             }
             else if (!stopWhenRunning)
             {
-                LiquidLabyrinthBase.Logger.LogWarning($"Coroutine {coroutine.GetType().Name} is already running");
+                Plugin.Logger.LogWarning($"Coroutine {coroutine.GetType().Name} is already running");
             }
             return runningCoroutines[coroutine.GetType()];
         }

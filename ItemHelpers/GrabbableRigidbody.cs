@@ -1,11 +1,15 @@
-﻿using UnityEngine;
+﻿using LiquidLabyrinth.Utilities;
+using UnityEngine;
 namespace LiquidLabyrinth.ItemHelpers
 {
     [RequireComponent(typeof(Rigidbody))]
+
+    // Taken from: https://gist.github.com/EvaisaDev/aaf727b2aeb6733793c89a887f8f8615
     class GrabbableRigidbody : GrabbableObject
     {
         public float gravity = 9.8f;
         internal Rigidbody rb;
+        public AudioSource itemAudio;
         public override void Start()
         {
             rb = GetComponent<Rigidbody>();
@@ -14,6 +18,7 @@ namespace LiquidLabyrinth.ItemHelpers
             itemProperties.itemSpawnsOnGround = false;
             base.Start();
             EnablePhysics(true);
+            itemAudio = gameObject.GetComponent<AudioSource>();
         }
 
         public new void EnablePhysics(bool enable)
@@ -43,7 +48,7 @@ namespace LiquidLabyrinth.ItemHelpers
         }
 
 
-        public void FixedUpdate()
+        public virtual void FixedUpdate()
         {
             // handle gravity if rigidbody is enabled
             if (IsHost)
@@ -53,8 +58,6 @@ namespace LiquidLabyrinth.ItemHelpers
                     rb.useGravity = false;
 
                     rb.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
-
-                    LiquidLabyrinthBase.Logger.LogMessage("Velocity: " + rb.velocity.ToString());
                 }
                 else
                 {
@@ -67,18 +70,38 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             if (parentObject != null && isHeld)
             {
-                LiquidLabyrinthBase.Logger.LogMessage("Velocity: " + rb.velocity.ToString());
-                base.transform.rotation = parentObject.rotation;
-                base.transform.Rotate(itemProperties.rotationOffset);
-                base.transform.position = parentObject.position;
+                transform.rotation = parentObject.rotation;
+                transform.Rotate(itemProperties.rotationOffset);
+                transform.position = parentObject.position;
                 Vector3 positionOffset = itemProperties.positionOffset;
                 positionOffset = parentObject.rotation * positionOffset;
-                base.transform.position += positionOffset;
+                transform.position += positionOffset;
             }
             if (radarIcon != null)
             {
-                radarIcon.position = base.transform.position;
+                radarIcon.position = transform.position;
             }
+        }
+
+        public virtual void OnCollisionEnter(Collision collision)
+        {
+            rb.isKinematic = false;
+            float rigidBodyMangintude = rb.velocity.magnitude;
+            if (collision.gameObject.tag == "Player") 
+            {
+                // this aint workin chief.
+                Rigidbody playerRb = collision.gameObject.GetComponentInParent<Rigidbody>();
+                if (playerRb != null)
+                {
+                    Vector3 torqueDirection = new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f));
+                    float torqueAmount = 10f; // Adjust this value to change the amount of rotation
+                    rb.AddTorque(torqueDirection * torqueAmount);
+                }
+                return;
+            }
+            float pitch = OtherUtils.mapValue(rigidBodyMangintude, 0.8f, 10f, 0.8f, 1.5f);
+            itemAudio.pitch = pitch;
+            itemAudio.PlayOneShot(itemProperties.dropSFX);
         }
 
         public override void FallWithCurve()
@@ -86,7 +109,7 @@ namespace LiquidLabyrinth.ItemHelpers
             // stub, we do not need this.
         }
 
-        public new void FallToGround(bool randomizePosition = false)
+        public void FallToGround()
         {
             // stub, we do not need this.
         }
@@ -95,7 +118,14 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             // remove parent object
             base.EquipItem();
+            itemAudio.pitch = 1f;
             transform.parent = null;
+        }
+
+        public override void InteractItem()
+        {
+            base.InteractItem();
+            itemAudio.pitch = 1f;
         }
     }
 }

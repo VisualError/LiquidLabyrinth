@@ -51,7 +51,7 @@ namespace LiquidLabyrinth.Utilities
                     ES3.DeleteKey("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
                 }
                 ES3.Save("shipBottleData", mergedData, GameNetworkManager.Instance.currentSaveFileName);
-                LiquidLabyrinthBase.Logger.LogWarning($"SAVED: {string.Join("\n", mergedData)}");
+                Plugin.Logger.LogWarning($"SAVED: {string.Join("\n", mergedData)}");
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using LiquidLabyrinth.Utilities;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System.Collections;
 using Unity.Netcode;
@@ -6,49 +7,113 @@ using UnityEngine;
 
 namespace LiquidLabyrinth.ItemHelpers
 {
-    class Throwable : GrabbableObject
+    class Throwable : GrabbableRigidbody
     {
-        public NetworkVariable<bool> Throwing = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        public PlayerControllerB playerThrownBy;
+        private float t = 0f;
+        public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        public BoxCollider collider;
         public bool Holding = false;
         public bool LMBToThrow = true;
         public bool QToThrow = false;
         public bool EToThrow = false;
-        public AnimationCurve FallCurve;
-        public AnimationCurve VerticalFallCurveNoBounce;
-        public AnimationCurve VerticalFallCurve;
-        private PlayerControllerB previouslyHeld;
-        public RaycastHit itemHit;
+        Quaternion oldRotation;
+        private NetworkVariable<Vector3> throwDir = new NetworkVariable<Vector3>(Vector3.zero, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+        private NetworkVariable<bool> isKinematic = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+        public float throwForce = 10f;
 
         public override void Start()
         {
             base.Start();
+
+            if (IsHost)
+            {
+                rb.isKinematic = false;
+                //rb.AddForce(gameObject.transform.forward * throwForce, ForceMode.Impulse);
+                t = 0f;
+                isThrown.Value = true;
+            }
+            collider = GetComponent<BoxCollider>();
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)
         {
             base.ItemActivate(used, buttonDown);
             Holding = buttonDown;
-            if (!IsOwner) return;
-            if (!Throwing.Value && LMBToThrow)
+            if (!isThrown.Value && LMBToThrow && !buttonDown)
             {
-                Throw_ServerRpc();
+                if (IsOwner)
+                {
+                    rb.isKinematic = false;
+                    throwDir.Value = gameObject.transform.forward;
+
+                    // cast ray forward for 100 units, if it hit something, we take the direction from the object to the hit point
+                    RaycastHit hit;
+                    if (Physics.Raycast(playerThrownBy.gameplayCamera.transform.position, playerThrownBy.gameplayCamera.transform.forward, out hit, 100f, OtherUtils.MaskForLayer(gameObject.layer), QueryTriggerInteraction.Ignore))
+                    {
+                        throwDir.Value = (hit.point - gameObject.transform.position).normalized;
+                    }
+                    Throw_ServerRpc(throwDir.Value);
+                }
             }
         }
 
         [ServerRpc]
-        void Throw_ServerRpc()
+        void Throw_ServerRpc(Vector3 throwDir)
         {
-            Throw_ClientRpc();
+            Throw_ClientRpc(throwDir);
         }
         [ClientRpc]
-        void Throw_ClientRpc()
+        void Throw_ClientRpc(Vector3 throwDir)
         {
-            CoroutineHandler.Instance.NewCoroutine(Throw());
+            StartCoroutine(Throw(throwDir));
         }
 
         public override void Update()
         {
+            if (isKinematic.Value != rb.isKinematic && !IsHost)
+            {
+                rb.isKinematic = isKinematic.Value;
+            }
+            else if (IsHost && rb.isKinematic != isKinematic.Value)
+            {
+                isKinematic.Value = rb.isKinematic;
+            }
+            collider.isTrigger = isKinematic.Value;
             base.Update();
+        }
+
+        public override void FixedUpdate()
+        {
+            base.FixedUpdate();
+            if (IsHost)
+            {
+                if (rb.isKinematic && !isHeld)
+                {
+                    rb.position = gameObject.transform.position;
+                    rb.rotation = gameObject.transform.rotation;
+                }
+                if (isThrown.Value)
+                {
+                    transform.rotation = oldRotation;
+                    if (rb.velocity.magnitude > 0.1f)
+                    {
+                        Quaternion targetRotation = Quaternion.LookRotation(rb.velocity);
+                        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                        oldRotation = transform.rotation;
+                        // Apply the rotation
+                        //rb.AddRelativeTorque(torqueDirection*10f,ForceMode.Impulse);
+                    }
+
+                    t += Time.deltaTime;
+                    if (t > 5f)
+                    {
+                        isThrown.Value = false;
+                        rb.isKinematic = true;
+                    }
+                }
+            }
         }
 
         public override void ItemInteractLeftRight(bool right)
@@ -61,75 +126,43 @@ namespace LiquidLabyrinth.ItemHelpers
         }
 
 
-        public IEnumerator Throw()
+        public IEnumerator Throw(Vector3 throwDir)
         {
-            if (IsOwner)
-            {
-                Throwing.Value = true;
-            }
             //TODO: Throwing animation.
             //previouslyHeld.twoHanded = true;
             yield return new WaitUntil(() => !Holding);
-            if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
-            previouslyHeld.inSpecialInteractAnimation = true;
-            previouslyHeld.isClimbingLadder = false;
-            previouslyHeld.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
-            previouslyHeld.playerBodyAnimator.SetTrigger("SA_ChargeItem");
+            if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
+            playerThrownBy.inSpecialInteractAnimation = true;
+            playerThrownBy.isClimbingLadder = false;
+            playerThrownBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
+            playerThrownBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
             yield return new WaitForSeconds(.25f);
-            if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
-            previouslyHeld.inSpecialInteractAnimation = false;
-            //previouslyHeld.twoHanded = false;
-            if (IsOwner) playerHeldBy.DiscardHeldObject(true, null, GetItemThrowDestination(), true);
+            oldRotation = gameObject.transform.rotation;
+            playerThrownBy.DiscardHeldObject();
+            t = 0f;
+            rb.isKinematic = false;
+            isThrown.Value = true;
+            rb.transform.Rotate(new Vector3(0, 90, 0)); // Rotates the bottle 90 degrees around the y-axis
+
+            Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
+            rb.AddForce(throwDir * throwForce, ForceMode.Impulse);
+            if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
+            playerThrownBy.inSpecialInteractAnimation = false;
             yield break;
         }
 
-        public override void OnHitGround()
+        public override void OnCollisionEnter(Collision collision)
         {
-            base.OnHitGround();
-            if (IsOwner)
-            {
-                Throwing.Value = false;
-            }
+            base.OnCollisionEnter(collision);
+            isThrown.Value = false;
         }
 
         public override void EquipItem()
         {
             base.EquipItem();
-            previouslyHeld = playerHeldBy;
-            if (IsOwner)
-            {
-                Throwing.Value = false;
-            }
-        }
-
-        public Vector3 GetItemThrowDestination()
-        {
-            Vector3 vector = transform.position;
-            Ray ThrowRay = new Ray(playerHeldBy.gameplayCamera.transform.position, playerHeldBy.gameplayCamera.transform.forward);
-            if (Physics.Raycast(ThrowRay, out itemHit, 12f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-            {
-                vector = ThrowRay.GetPoint(itemHit.distance - 0.05f);
-            }
-            else
-            {
-                vector = ThrowRay.GetPoint(10f);
-            }
-            ThrowRay = new Ray(vector, Vector3.down);
-            Vector3 result;
-            if (Physics.Raycast(ThrowRay, out itemHit, 30f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-            {
-                result = itemHit.point + Vector3.up * 0.05f;
-            }
-            else
-            {
-                result = ThrowRay.GetPoint(30f);
-            }
-            return result;
-        }
-
-        public override void FallWithCurve()
-        {
-            base.FallWithCurve();
+            isThrown.Value = false;
+            rb.isKinematic = false;
+            t = 0f;
         }
 
     }

@@ -2,6 +2,7 @@
 using BepInEx.Logging;
 using HarmonyLib;
 using LiquidLabyrinth.Patches;
+using LiquidLabyrinth.Utilities;
 using System.Reflection;
 using System.Text;
 using Unity.Netcode;
@@ -12,12 +13,12 @@ namespace LiquidLabyrinth
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     [BepInDependency("evaisa.lethallib")]
     [BepInProcess("Lethal Company.exe")]
-    public class LiquidLabyrinthBase : BaseUnityPlugin
+    public class Plugin : BaseUnityPlugin
     {
 
         // TODO: USE SaveLocalPlayerValues METHOD FROM GAMENETWORKMANAGER TO SAVE THE BOTTLE NAMES!
         internal static new ManualLogSource Logger;
-        internal static LiquidLabyrinthBase Instance;
+        internal static Plugin Instance;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
 
 
@@ -78,7 +79,9 @@ namespace LiquidLabyrinth
                 Logger.LogWarning("Couldn't find AssetBundles.");
             }
 
+            OtherUtils.GenerateLayerMap();
             Harmony.PatchAll(typeof(StartOfRoundPatch));
+            Harmony.PatchAll(typeof(PlayerControllerBPatch));
             Harmony.PatchAll(typeof(GameNetworkManagerPatch));
         }
     }

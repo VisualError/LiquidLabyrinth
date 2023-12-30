@@ -73,7 +73,6 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void EquipItem()
         {
             base.EquipItem();
-            EnablePhysics(true);
             playerHeldBy.equippedUsableItemQE = true;
             wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
             wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
@@ -95,14 +94,13 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void InteractItem()
         {
             base.InteractItem();
-            EnablePhysics(true);
-            LiquidLabyrinthBase.Logger.LogWarning("Interacted!");
+            Plugin.Logger.LogWarning("Interacted!");
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)
         {
             LMBToThrow = false;
-            LiquidLabyrinthBase.Logger.LogWarning($"{used} {buttonDown}");
+            Plugin.Logger.LogWarning($"{used} {buttonDown}");
             Holding = buttonDown;
             if (playerHeldBy == null) return;
             playerHeldBy.activatingItem = buttonDown;
@@ -134,6 +132,7 @@ namespace LiquidLabyrinth.ItemHelpers
                     break;
                 case BottleModes.Throw:
                     LMBToThrow = true;
+                    playerThrownBy = playerHeldBy;
                     if (IsOwner && UnityEngine.Random.Range(1, 100) <= 25) BreakBottle = true;
                     break;
                 case BottleModes.Toast:
@@ -152,11 +151,10 @@ namespace LiquidLabyrinth.ItemHelpers
             if (hits.Count() > 0)
             {
                 RaycastHit found = hits.FirstOrDefault(hit => hit.transform.TryGetComponent(out PotionBottle bottle) && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController);// && bottle.isHeld && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController
-                LiquidLabyrinthBase.Logger.LogWarning(found.transform);
+                Plugin.Logger.LogWarning(found.transform);
                 if (found.transform != null && playerHeldBy != null)
                 {
-                    LiquidLabyrinthBase.Logger.LogWarning("FOUND!");
-                    EnablePhysics(false);
+                    Plugin.Logger.LogWarning("FOUND!");
                     if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(true, 0, playerHeldBy.targetYRot, true);
                     PlayerUtils.RotateToObject(playerHeldBy, found.transform.gameObject);
                     playerHeldBy.inSpecialInteractAnimation = true;
@@ -164,13 +162,12 @@ namespace LiquidLabyrinth.ItemHelpers
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     playerHeldBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
                     yield return new WaitForSeconds(0.5f);
-                    EnablePhysics(true);
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
                     playerHeldBy.activatingItem = false;
                     playerHeldBy.inSpecialInteractAnimation = false;
                     playerHeldBy.isClimbingLadder = false;
-                    LiquidLabyrinthBase.Logger.LogWarning("DONE ANIMATION");
+                    Plugin.Logger.LogWarning("DONE ANIMATION");
                 }
             }
             ToastCoroutine = null;
@@ -208,7 +205,7 @@ namespace LiquidLabyrinth.ItemHelpers
                     if (nodeProperties.headerText == "BottleType")
                     {
                         nodeProperties.headerText += UnityEngine.Random.Range(1, 12);
-                        LiquidLabyrinthBase.Logger.LogWarning("generating random name");
+                        Plugin.Logger.LogWarning("generating random name");
                     }
                     bottleType = nodeProperties.headerText;
                     nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
@@ -229,7 +226,7 @@ namespace LiquidLabyrinth.ItemHelpers
                 if (Fill.Value == -1)
                 {
                     Fill.Value = UnityEngine.Random.Range(0f, 1f);
-                    LiquidLabyrinthBase.Logger.LogWarning("Bottle fill is -1, setting random value.");
+                    Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
                 }
             }
             // ^ This part above only runs on server to sync initialization.
@@ -252,7 +249,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void LoadItemSaveData(int saveData)
         {
             base.LoadItemSaveData(saveData);
-            LiquidLabyrinthBase.Logger.LogWarning($"LoadItemSaveData called! Got: {saveData}");
+            Plugin.Logger.LogWarning($"LoadItemSaveData called! Got: {saveData}");
             localFill = (saveData / 100f);
             if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
             if (ES3.KeyExists("shipBottleData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
@@ -264,11 +261,11 @@ namespace LiquidLabyrinth.ItemHelpers
             if (data.TryGetValue(key, out string value))
             {
                 GetComponentInChildren<ScanNodeProperties>().headerText = value;
-                LiquidLabyrinthBase.Logger.LogWarning($"Found data: {value} ({key})");
+                Plugin.Logger.LogWarning($"Found data: {value} ({key})");
             }
             else
             {
-                LiquidLabyrinthBase.Logger.LogWarning($"Couldn't find save data for {GetType().Name}. ({key}). Please send this log to the mod developer.");
+                Plugin.Logger.LogWarning($"Couldn't find save data for {GetType().Name}. ({key}). Please send this log to the mod developer.");
             }
         }
 
@@ -292,7 +289,7 @@ namespace LiquidLabyrinth.ItemHelpers
         [ClientRpc]
         void HitGround_ClientRpc()
         {
-            LiquidLabyrinthBase.Logger.LogWarning("It hit da ground");
+            Plugin.Logger.LogWarning("It hit da ground");
 
 
             // REVIVE TEST:
@@ -322,7 +319,7 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             // Currently used for debugging
             LMBToThrow = false;
-            if (Throwing.Value && BreakBottle)
+            if (isThrown.Value && BreakBottle)
             {
                 HitGround_ServerRpc();
             }
@@ -357,7 +354,7 @@ namespace LiquidLabyrinth.ItemHelpers
             if (IsOwner && playerHeldBy != null && mode.Value == BottleModes.Drink && Holding && isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
             {
                 Fill.Value = Mathf.Lerp(Fill.Value, 0f, Time.deltaTime * 0.5f);
-                LiquidLabyrinthBase.Logger.LogWarning($"Started drinking! ({Fill.Value})");
+                Plugin.Logger.LogWarning($"Started drinking! ({Fill.Value})");
             }
             if (Fill.Value <= 0.05) // fun
             {
@@ -369,38 +366,9 @@ namespace LiquidLabyrinth.ItemHelpers
                 itemUsedUp = true;
                 return;
             }
-        }
 
-        void OnCollisionEnter(Collision collision)
-        {
-            ContactPoint contact = collision.contacts[0];
-            Debug.Log($"CONTACT!");
-        }
-
-            public void FixedUpdate()
-        {
-            if (itemUsedUp) return;
             rend.material.SetFloat("_Fill", Fill.Value);
             Wobble();
-        }
-
-
-        // Should probably put this in throwable instead.
-        public override void FallWithCurve()
-        {
-            base.FallWithCurve();
-            float magnitude = (startFallingPosition - targetFloorPosition).magnitude;
-            transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(itemProperties.restingRotation.x, transform.eulerAngles.y, itemProperties.restingRotation.z), 14f * Time.deltaTime / magnitude);
-            transform.localPosition = Vector3.Lerp(startFallingPosition, targetFloorPosition, FallCurve.Evaluate(fallTime));
-            if (magnitude > 5f)
-            {
-                transform.localPosition = Vector3.Lerp(new Vector3(transform.localPosition.x, startFallingPosition.y, transform.localPosition.z), new Vector3(transform.localPosition.x, targetFloorPosition.y, transform.localPosition.z), VerticalFallCurveNoBounce.Evaluate(fallTime));
-            }
-            else
-            {
-                transform.localPosition = Vector3.Lerp(new Vector3(transform.localPosition.x, startFallingPosition.y, transform.localPosition.z), new Vector3(transform.localPosition.x, targetFloorPosition.y, transform.localPosition.z), VerticalFallCurve.Evaluate(fallTime));
-            }
-            fallTime += Mathf.Abs(Time.deltaTime * 12f / magnitude);
         }
 
         private void Wobble()
