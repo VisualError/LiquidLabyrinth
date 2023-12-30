@@ -8,7 +8,6 @@ namespace LiquidLabyrinth.Patches
         [HarmonyPatch(nameof(StartOfRound.Awake))]
         static bool Prefix()
         {
-            LiquidLabyrinthBase.bottlesAdded = 1;
             return true;
         }
     }

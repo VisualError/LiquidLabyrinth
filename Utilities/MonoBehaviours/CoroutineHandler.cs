@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace LiquidLabyrinth.Utilities.MonoBehaviours
@@ -26,10 +25,10 @@ namespace LiquidLabyrinth.Utilities.MonoBehaviours
 
         private Dictionary<Type, IEnumerator> runningCoroutines = new Dictionary<Type, IEnumerator>();
 
-        public void NewCoroutine(IEnumerator coroutine, bool stopWhenRunning = false)
+        public IEnumerator NewCoroutine(IEnumerator coroutine, bool stopWhenRunning = false)
         {
             // Check if the same IEnumerator instance is already running
-            if (stopWhenRunning && IsCoroutineRunning(coroutine.GetType())) 
+            if (stopWhenRunning && IsCoroutineRunning(coroutine.GetType()))
             {
                 StopCoroutine(runningCoroutines[coroutine.GetType()]);
                 runningCoroutines.Remove(coroutine.GetType());
@@ -44,6 +43,7 @@ namespace LiquidLabyrinth.Utilities.MonoBehaviours
             {
                 LiquidLabyrinthBase.Logger.LogWarning($"Coroutine {coroutine.GetType().Name} is already running");
             }
+            return runningCoroutines[coroutine.GetType()];
         }
 
         private bool IsCoroutineRunning(Type coroutine)
@@ -59,7 +59,7 @@ namespace LiquidLabyrinth.Utilities.MonoBehaviours
             runningCoroutines.Remove(coroutine.GetType());
         }
 
-        public new void StopAllCoroutines() 
+        public new void StopAllCoroutines()
         {
             base.StopAllCoroutines();
             runningCoroutines.Clear();

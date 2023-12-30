@@ -1,13 +1,14 @@
-﻿using LethalLib;
+﻿using GameNetcodeStuff;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LiquidLabyrinth.ItemHelpers
 {
     class Throwable : GrabbableObject
     {
-        public bool Throwing = false;
+        public NetworkVariable<bool> Throwing = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         public bool Holding = false;
         public bool LMBToThrow = true;
         public bool QToThrow = false;
@@ -15,6 +16,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public AnimationCurve FallCurve;
         public AnimationCurve VerticalFallCurveNoBounce;
         public AnimationCurve VerticalFallCurve;
+        private PlayerControllerB previouslyHeld;
         public RaycastHit itemHit;
 
         public override void Start()
@@ -25,12 +27,28 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void ItemActivate(bool used, bool buttonDown = true)
         {
             base.ItemActivate(used, buttonDown);
-            if (!IsOwner) return;
             Holding = buttonDown;
-            if (!Throwing)
+            if (!IsOwner) return;
+            if (!Throwing.Value && LMBToThrow)
             {
-                CoroutineHandler.Instance.NewCoroutine(Throw());
+                Throw_ServerRpc();
             }
+        }
+
+        [ServerRpc]
+        void Throw_ServerRpc()
+        {
+            Throw_ClientRpc();
+        }
+        [ClientRpc]
+        void Throw_ClientRpc()
+        {
+            CoroutineHandler.Instance.NewCoroutine(Throw());
+        }
+
+        public override void Update()
+        {
+            base.Update();
         }
 
         public override void ItemInteractLeftRight(bool right)
@@ -42,31 +60,46 @@ namespace LiquidLabyrinth.ItemHelpers
             }
         }
 
-        public override void Update()
-        {
-            base.Update();
-        }
-
 
         public IEnumerator Throw()
         {
-            Throwing = true;
+            if (IsOwner)
+            {
+                Throwing.Value = true;
+            }
             //TODO: Throwing animation.
+            //previouslyHeld.twoHanded = true;
             yield return new WaitUntil(() => !Holding);
-            playerHeldBy.DiscardHeldObject(true, null, GetItemThrowDestination(), true);
+            if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
+            previouslyHeld.inSpecialInteractAnimation = true;
+            previouslyHeld.isClimbingLadder = false;
+            previouslyHeld.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
+            previouslyHeld.playerBodyAnimator.SetTrigger("SA_ChargeItem");
+            yield return new WaitForSeconds(.25f);
+            if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
+            previouslyHeld.inSpecialInteractAnimation = false;
+            //previouslyHeld.twoHanded = false;
+            if (IsOwner) playerHeldBy.DiscardHeldObject(true, null, GetItemThrowDestination(), true);
             yield break;
         }
 
         public override void OnHitGround()
         {
             base.OnHitGround();
-            Throwing = false;
+            if (IsOwner)
+            {
+                Throwing.Value = false;
+            }
         }
 
         public override void EquipItem()
         {
             base.EquipItem();
-            Throwing = false;
+            previouslyHeld = playerHeldBy;
+            if (IsOwner)
+            {
+                Throwing.Value = false;
+            }
         }
 
         public Vector3 GetItemThrowDestination()

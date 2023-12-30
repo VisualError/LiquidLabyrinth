@@ -1,12 +1,11 @@
 ﻿using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
-using System.Text;
-using UnityEngine;
-using LiquidLabyrinth.ItemHelpers;
 using LiquidLabyrinth.Patches;
-using Unity.Netcode;
 using System.Reflection;
+using System.Text;
+using Unity.Netcode;
+using UnityEngine;
 
 namespace LiquidLabyrinth
 {
@@ -19,7 +18,6 @@ namespace LiquidLabyrinth
         // TODO: USE SaveLocalPlayerValues METHOD FROM GAMENETWORKMANAGER TO SAVE THE BOTTLE NAMES!
         internal static new ManualLogSource Logger;
         internal static LiquidLabyrinthBase Instance;
-        internal static int bottlesAdded = 1;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
 
 
@@ -64,20 +62,20 @@ namespace LiquidLabyrinth
 
             var bundle = AssetBundle.LoadFromMemory(Properties.Resources.liquidlabyrinth);
             Item item = bundle.LoadAsset<Item>("Assets/Liquid Labyrinth/BottleItem.asset");
-            if(item != null)
+            if (item != null)
             {
                 if (item.spawnPrefab.GetComponent<NetworkObject>() is NetworkObject obj && obj != null)
                 {
                     LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(item.spawnPrefab);
-                    Logger.LogWarning("network prefab added");
+                    Logger.LogWarning("Network Prefab Initialized!");
                 }
                 // Register the network prefab before registering items.
-                LethalLib.Modules.Items.RegisterScrap(item, 100, LethalLib.Modules.Levels.LevelTypes.All);
+                LethalLib.Modules.Items.RegisterScrap(item, 1000, LethalLib.Modules.Levels.LevelTypes.All);
                 LethalLib.Modules.Items.RegisterShopItem(item, -1);
             }
             else
             {
-                Logger.LogWarning("AAAAAAAAAAAA");
+                Logger.LogWarning("Couldn't find AssetBundles.");
             }
 
             Harmony.PatchAll(typeof(StartOfRoundPatch));
