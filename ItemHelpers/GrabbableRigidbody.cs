@@ -143,6 +143,7 @@ namespace LiquidLabyrinth.ItemHelpers
             base.EquipItem();
             itemAudio.pitch = 1f;
             rb.isKinematic = true;
+            EnablePhysics(false);
             transform.parent = null;
         }
 

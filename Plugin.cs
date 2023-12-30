@@ -99,11 +99,13 @@ namespace LiquidLabyrinth
                 {
                     new ToggleComponent
                     {
+                        DefaultToggled = RevivePlayer.Value,
                         Text = RevivePlayer.Description.Description,
                         OnValueChanged = (self, value) => RevivePlayer.Value = value
                     },
                     new ToggleComponent
                     {
+                        DefaultToggled = NoGravityInOrbit.Value,
                         Text = NoGravityInOrbit.Description.Description,
                         OnValueChanged = (self, value) => NoGravityInOrbit.Value = value
                     }

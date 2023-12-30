@@ -148,10 +148,10 @@ namespace LiquidLabyrinth.ItemHelpers
             yield return new WaitForSeconds(.25f);
             onThrowItem?.Invoke();
             oldRotation = gameObject.transform.rotation;
-            playerThrownBy.DiscardHeldObject();
+            if (IsOwner)playerThrownBy.DiscardHeldObject();
             t = 0f;
             rb.isKinematic = false;
-            isThrown.Value = true;
+            if(IsOwner) isThrown.Value = true;
             rb.transform.Rotate(new Vector3(0, 90, 0)); // Rotates the bottle 90 degrees around the y-axis
 
             Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
@@ -164,7 +164,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void OnCollisionEnter(Collision collision)
         {
             base.OnCollisionEnter(collision);
-            isThrown.Value = false;
+            if(IsOwner) isThrown.Value = false;
         }
 
         public override void EquipItem()

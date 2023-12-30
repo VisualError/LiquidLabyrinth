@@ -51,6 +51,7 @@ namespace LiquidLabyrinth.ItemHelpers
         [Space(3f)]
         [Header("Liquid Properties")]
         public bool BreakBottle = false;
+        private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -192,9 +193,7 @@ namespace LiquidLabyrinth.ItemHelpers
                     playerHeldBy.isClimbingLadder = false;
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     playerHeldBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
-                    EnablePhysics(false);
                     yield return new WaitForSeconds(0.5f);
-                    EnablePhysics(true);
                     playerHeldBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
                     if (IsOwner) playerHeldBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
                     playerHeldBy.activatingItem = false;
@@ -233,6 +232,7 @@ namespace LiquidLabyrinth.ItemHelpers
             if (IsHost || IsServer)
             {
                 scrapValue = itemProperties.creditsWorth;
+                net_CanRevivePlayer.Value = Plugin.Instance.RevivePlayer.Value;
                 ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
                 if (nodeProperties != null)
                 {
@@ -330,14 +330,14 @@ namespace LiquidLabyrinth.ItemHelpers
             RaycastHit[] hits = Physics.SphereCastAll(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 10f, 80f, 1048576);
 
             //END OF REVIVE TEST
-            if (hits.Count() > 0 && Plugin.Instance.RevivePlayer.Value)
+            if (hits.Count() > 0 && net_CanRevivePlayer.Value)
             {
                 foreach (RaycastHit hit in hits)
                 {
                     if (hit.transform.TryGetComponent(out DeadBodyInfo deadBodyInfo))
                     {
                         PlayerControllerB player = deadBodyInfo.playerScript;
-                        PlayerUtils.RevivePlayer(player, deadBodyInfo, hit.transform.position);
+                        PlayerUtils.RevivePlayer(player, deadBodyInfo, hit.transform.position); // Might have to sync this using RPC too..
                     }
                 }
             }

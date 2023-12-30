@@ -14,7 +14,7 @@ $manifestContent = @"
  "version_number": "$versionNumber",
  "website_url": "$repositoryUrl",
  "description": "$description",
- "dependencies": ["BepInEx-BepInExPack-5.4.2100"]
+ "dependencies": [ "BepInEx-BepInExPack-5.4.2100", "Evaisa-LethalLib-0.9.0", "willis81808-LethalSettings-1.1.0" ]
 }
 "@
 

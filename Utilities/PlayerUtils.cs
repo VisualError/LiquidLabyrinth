@@ -109,6 +109,9 @@ namespace LiquidLabyrinth.Utilities
 				player.sourcesCausingSinking = 0;
 				player.reverbPreset = StartOfRound.Instance.shipReverb;
 			}
+
+			StartOfRound.Instance.livingPlayers++;
+
 			SoundManager.Instance.earsRingingTimer = 0f;
 			player.voiceMuffledByEnemy = false;
 			SoundManager.Instance.playerVoicePitchTargets[player.playerClientId] = 1f;
