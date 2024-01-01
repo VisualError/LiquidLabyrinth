@@ -32,6 +32,8 @@ namespace LiquidLabyrinth
         internal ConfigEntry<bool> UseSillyNames;
         internal ConfigEntry<bool> SetAsShopItems;
         internal ConfigEntry<int> BottleRarity;
+        internal ConfigEntry<bool> spawnRandomEnemy;
+        internal Dictionary<string, EnemyType> enemyTypes = new Dictionary<string,EnemyType>();
         internal int SliderValue;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
         internal string[] sillyNames = { "wah", "woh", "yippie", "whau", "wuh", "whuh", "auh", ":3" };
@@ -78,14 +80,15 @@ namespace LiquidLabyrinth
             Harmony.PatchAll(typeof(GameNetworkManagerPatch));
             Harmony.PatchAll(typeof(PlayerControllerBPatch));
             Harmony.PatchAll(typeof(TerminalPatch));
+            Harmony.PatchAll(typeof(StartOfRoundPatch));
             RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
             NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
             IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", true, "if enemies can pick up objects made by the mod");
             UseSillyNames = Config.Bind("Fun", "Use Silly Names", false, "Silly overlaod");
             SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[used for development] all registered items will become available to store.");
             BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity");
+            spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] revive has a chance to spawn enemy, let all enemies be spawned.");
             SliderValue = BottleRarity.Value;
-
             // Bundle loader.
 
             AssetLoader.LoadAssetBundles();
@@ -155,6 +158,12 @@ namespace LiquidLabyrinth
                                 }
                             }
                         }
+                    },
+                    new ToggleComponent
+                    {
+                        Value = spawnRandomEnemy.Value,
+                        Text = spawnRandomEnemy.Description.Description,
+                        OnValueChanged = (self, value) => spawnRandomEnemy.Value = value
                     },
                     new VerticalComponent
                     {

@@ -166,7 +166,7 @@ namespace LiquidLabyrinth.ItemHelpers
             yield return new WaitForSeconds(.25f);
             onThrowItem?.Invoke();
             oldRotation = gameObject.transform.rotation;
-            if (IsOwner)playerThrownBy.DiscardHeldObject();
+            if (IsOwner) playerThrownBy.DiscardHeldObject();
             rb.isKinematic = false;
             if(IsOwner) isThrown.Value = true;
             transform.Rotate(itemProperties.rotationOffset); // so it no fucky. it look goody

@@ -105,7 +105,7 @@ namespace LiquidLabyrinth.ItemHelpers
             if (localPlayerController == null) return;
             float divided = localPlayerController.insanityLevel + 1f / localPlayerController.maxInsanityLevel + 1f;
             float num = Vector3.Distance(localPlayerController.gameplayCamera.transform.position, transform.position);
-            if(num > 10f || IsOwner && !Equiped)
+            if(num > 10f || playerHeldBy == localPlayerController && !Equiped)
             {
                 localPlayerController.isMovementHindered = (int)Mathf.MoveTowards(localPlayerController.isMovementHindered, 0f, Time.deltaTime);
             }

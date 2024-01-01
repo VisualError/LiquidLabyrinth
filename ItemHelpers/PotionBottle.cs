@@ -9,6 +9,7 @@ using System.Linq;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace LiquidLabyrinth.ItemHelpers
 {
@@ -67,6 +68,7 @@ namespace LiquidLabyrinth.ItemHelpers
         [Space(3f)]
         [Header("Liquid Properties")]
         public bool BreakBottle = false;
+        private NetworkVariable<bool> net_spawnedEnemy = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private NetworkVariable<FixedString32Bytes> net_Name = new NetworkVariable<FixedString32Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -341,8 +343,7 @@ namespace LiquidLabyrinth.ItemHelpers
             return Plugin.Instance.bottleItemList.Count;
         }
 
-
-        [ServerRpc(RequireOwnership = false)]
+        [ServerRpc]
         void HitGround_ServerRpc()
         {
             HitGround_ClientRpc();
@@ -375,18 +376,66 @@ namespace LiquidLabyrinth.ItemHelpers
             if (IsServer || IsHost) Destroy(gameObject, .5f);
         }
 
-        [ServerRpc(RequireOwnership = false)]
+        [ServerRpc]
         void RevivePlayer_ServerRpc(NetworkBehaviourReference player, Vector3 position)
         {
-            RevivePlayer_ClientRpc(player, position);
+            if (player.TryGet(out PlayerControllerB plr) && plr.deadBody != null)
+            {
+                if (net_spawnedEnemy.Value) return;
+                Vector3 navMeshPosition = RoundManager.Instance.GetNavMeshPosition(position, default(NavMeshHit), 10f, -1);
+                if (25 >= UnityEngine.Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
+                {
+                    net_spawnedEnemy.Value = true;
+                    if (Plugin.Instance.spawnRandomEnemy.Value)
+                    {
+                        foreach (KeyValuePair<string, EnemyType> dict in Plugin.Instance.enemyTypes)
+                        {
+                            NetworkObjectReference netObjectRef = RoundManager.Instance.SpawnEnemyGameObject(navMeshPosition, plr.transform.eulerAngles.y, -1, dict.Value);
+                            if (netObjectRef.TryGet(out NetworkObject networkObject, null))
+                            {
+                                MaskedPlayerEnemy component = networkObject.GetComponent<MaskedPlayerEnemy>();
+                                component.SetSuit(plr.currentSuitID);
+                                component.mimickingPlayer = plr;
+                                component.SetEnemyOutside(!plr.isInsideFactory);
+                                component.SetVisibilityOfMaskedEnemy();
+                                plr.redirectToEnemy = component;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        NetworkObjectReference netObjectRef = RoundManager.Instance.SpawnEnemyGameObject(navMeshPosition, plr.transform.eulerAngles.y, -1, Plugin.Instance.enemyTypes["Masked"]);
+                        if (netObjectRef.TryGet(out NetworkObject networkObject, null))
+                        {
+                            EnemyAI ai = networkObject.GetComponent<EnemyAI>();
+                            if (ai == null) return;
+                            ai.isOutside = !plr.isInsideFactory;
+                            if (ai.isOutside)
+                            {
+                                ai.allAINodes = GameObject.FindGameObjectsWithTag("OutsideAINode");
+                            }
+                            else
+                            {
+                                ai.allAINodes = GameObject.FindGameObjectsWithTag("AINode");
+                            }
+                            plr.redirectToEnemy = ai;
+                        }
+                    }
+                }
+            }
+            RevivePlayer_ClientRpc(player, position, !net_spawnedEnemy.Value);
         }
 
         [ClientRpc]
-        void RevivePlayer_ClientRpc(NetworkBehaviourReference player, Vector3 position)
+        void RevivePlayer_ClientRpc(NetworkBehaviourReference player, Vector3 position, bool revive)
         {
             if(player.TryGet(out PlayerControllerB plr) && plr.deadBody != null)
             {
-                PlayerUtils.RevivePlayer(plr, plr.deadBody, position);
+                if (revive)
+                {
+                    PlayerUtils.RevivePlayer(plr, plr.deadBody, position);
+                }
+                plr.deadBody.DeactivateBody(false);
             }
         }
 

@@ -1,7 +1,10 @@
 ﻿using GameNetcodeStuff;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
+using System;
 using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AI;
 
 namespace LiquidLabyrinth.Utilities
 {
@@ -59,7 +62,7 @@ namespace LiquidLabyrinth.Utilities
 			if (!player.isPlayerDead) return;
 			if(player.IsOwner || player.IsServer || player.IsHost)
             {
-                Object.Destroy(bodyInfo.gameObject);
+				bodyInfo.DeactivateBody(false);
             }
             player.ResetPlayerBloodObjects(player.isPlayerDead);
             player.isClimbingLadder = false;

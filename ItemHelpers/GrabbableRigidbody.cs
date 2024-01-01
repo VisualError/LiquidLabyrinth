@@ -157,7 +157,10 @@ namespace LiquidLabyrinth.ItemHelpers
             OnEquipItem?.Invoke();
             base.EquipItem();
             itemAudio.pitch = 1f;
-            rb.isKinematic = true;
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+            }
             EnablePhysics(false);
             transform.parent = null;
         }
@@ -165,7 +168,10 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void DiscardItem()
         {
             OnDiscardItem?.Invoke();
-            rb.isKinematic = false;
+            if (rb != null)
+            {
+                rb.isKinematic = false;
+            }
             base.DiscardItem();
         }
 
