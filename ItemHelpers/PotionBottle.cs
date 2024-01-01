@@ -6,11 +6,27 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
 namespace LiquidLabyrinth.ItemHelpers
 {
+    [Serializable]
+    public class BottleItemData
+    {
+        public BottleItemData(string _name, float _fill)
+        {
+            name = _name ?? "BottleType";
+            fill = _fill != 0f ? _fill : UnityEngine.Random.Range(0f, 1f);
+        }
+        public bool IsNullOrEmpty()
+        {
+            return string.IsNullOrEmpty(this.name) && this.fill == 0f;
+        }
+        public string name;
+        public float fill;
+    }
     class PotionBottle : Throwable
     {
         private Dictionary<float, string> data = null;
@@ -52,6 +68,7 @@ namespace LiquidLabyrinth.ItemHelpers
         [Header("Liquid Properties")]
         public bool BreakBottle = false;
         private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        private NetworkVariable<FixedString32Bytes> net_Name = new NetworkVariable<FixedString32Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -182,7 +199,7 @@ namespace LiquidLabyrinth.ItemHelpers
             RaycastHit[] hits = Physics.SphereCastAll(new Ray(playerHeldBy.gameplayCamera.transform.position + playerHeldBy.gameplayCamera.transform.forward * 20f, playerHeldBy.gameplayCamera.transform.forward), 20f, 80f, LayerMask.GetMask("Props"));
             if (hits.Count() > 0)
             {
-                RaycastHit found = hits.FirstOrDefault(hit => hit.transform.TryGetComponent(out PotionBottle bottle) && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController);// && bottle.isHeld && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController
+                RaycastHit found = hits.FirstOrDefault(hit => hit.transform.TryGetComponent(out PotionBottle bottle) && bottle.isHeld && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController);// && bottle.isHeld && bottle.playerHeldBy != GameNetworkManager.Instance.localPlayerController
                 Plugin.Logger.LogWarning(found.transform);
                 if (found.transform != null && playerHeldBy != null)
                 {
@@ -229,11 +246,11 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             base.OnNetworkSpawn();
             floatWhileOrbiting = true;
+            ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
             if (IsHost || IsServer)
             {
                 scrapValue = itemProperties.creditsWorth;
                 net_CanRevivePlayer.Value = Plugin.Instance.RevivePlayer.Value;
-                ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
                 if (nodeProperties != null)
                 {
                     if (nodeProperties.headerText == "BottleType")
@@ -242,6 +259,7 @@ namespace LiquidLabyrinth.ItemHelpers
                         Plugin.Logger.LogWarning("generating random name");
                     }
                     bottleType = nodeProperties.headerText;
+                    net_Name.Value = new FixedString32Bytes(nodeProperties.headerText);
                     nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
                 }
                 int NameHash = Math.Abs(nodeProperties.headerText.GetHashCode());
@@ -269,6 +287,8 @@ namespace LiquidLabyrinth.ItemHelpers
                 playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
             }
             // Sync to all clients.
+            nodeProperties.headerText = net_Name.Value.ToString();
+            itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
             gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
             if (Liquid != null)
             {
@@ -277,24 +297,29 @@ namespace LiquidLabyrinth.ItemHelpers
                 rend.material.SetColor("_SurfaceColor", net_lighterColor.Value);
                 rend.material.SetFloat("_Fill", net_Fill.Value);
             }
-            itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         }
 
         public override void LoadItemSaveData(int saveData)
         {
             base.LoadItemSaveData(saveData);
             Plugin.Logger.LogWarning($"LoadItemSaveData called! Got: {saveData}");
-            _localFill = (saveData / 100f);
             if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
             if (ES3.KeyExists("shipBottleData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
             {
                 data = ES3.Load<Dictionary<float, string>>("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
             }
             if (data == null) return;
-            float key = saveData + Math.Abs(transform.position.x + transform.position.y + transform.position.z);
+            float key = saveData;
             if (data.TryGetValue(key, out string value))
             {
-                GetComponentInChildren<ScanNodeProperties>().headerText = value;
+                var dataObject = JsonUtility.FromJson<BottleItemData>(value);
+                if (dataObject.IsNullOrEmpty())
+                {
+                    Plugin.Logger.LogWarning($"Object data was null/empty for {itemProperties.itemName}");
+                    dataObject = new("BottleType", 0f);
+                }
+                GetComponentInChildren<ScanNodeProperties>().headerText = dataObject.name;
+                _localFill = (dataObject.fill);
                 Plugin.Logger.LogWarning($"Found data: {value} ({key})");
             }
             else
@@ -307,10 +332,13 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public override int GetItemDataToSave()
         {
+            Plugin.Instance.bottleItemList.Add(this);
             Dictionary<float, string> data = new Dictionary<float, string>();
-            data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
-            SaveUtils.AddToQueue<PotionBottle>(GetType(), data);
-            return (int)(net_Fill.Value * 100f);
+            BottleItemData obj = new(net_Name.Value.ToString(), net_Fill.Value);
+            data.Add(Plugin.Instance.bottleItemList.Count, JsonUtility.ToJson(obj));
+            //data.Add(Plugin.Instance.bottleItemList.Count(), GetComponentInChildren<ScanNodeProperties>().headerText); //data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
+            SaveUtils.AddToQueue<PotionBottle>(GetType(), data, "shipBottleData");
+            return Plugin.Instance.bottleItemList.Count;
         }
 
 
@@ -328,8 +356,6 @@ namespace LiquidLabyrinth.ItemHelpers
 
             // REVIVE TEST:
             RaycastHit[] hits = Physics.SphereCastAll(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 10f, 80f, 1048576);
-
-            //END OF REVIVE TEST
             if (hits.Count() > 0 && net_CanRevivePlayer.Value)
             {
                 foreach (RaycastHit hit in hits)
@@ -337,7 +363,7 @@ namespace LiquidLabyrinth.ItemHelpers
                     if (hit.transform.TryGetComponent(out DeadBodyInfo deadBodyInfo))
                     {
                         PlayerControllerB player = deadBodyInfo.playerScript;
-                        PlayerUtils.RevivePlayer(player, deadBodyInfo, hit.transform.position); // Might have to sync this using RPC too..
+                        RevivePlayer_ServerRpc(player, hit.transform.position);
                     }
                 }
             }
@@ -349,6 +375,21 @@ namespace LiquidLabyrinth.ItemHelpers
             if (IsServer || IsHost) Destroy(gameObject, .5f);
         }
 
+        [ServerRpc(RequireOwnership = false)]
+        void RevivePlayer_ServerRpc(NetworkBehaviourReference player, Vector3 position)
+        {
+            RevivePlayer_ClientRpc(player, position);
+        }
+
+        [ClientRpc]
+        void RevivePlayer_ClientRpc(NetworkBehaviourReference player, Vector3 position)
+        {
+            if(player.TryGet(out PlayerControllerB plr) && plr.deadBody != null)
+            {
+                PlayerUtils.RevivePlayer(plr, plr.deadBody, position);
+            }
+        }
+
         public override void OnCollisionEnter(Collision collision)
         {
             LMBToThrow = false;
@@ -356,6 +397,7 @@ namespace LiquidLabyrinth.ItemHelpers
             {
                 HitGround_ServerRpc();
             }
+            // Call base function after doing logic, so isThrown isn't always set to false when checking.
             base.OnCollisionEnter(collision);
         }
 
@@ -367,8 +409,9 @@ namespace LiquidLabyrinth.ItemHelpers
             string[] allLines;
             string modeString = GetModeString(net_mode.Value, net_isOpened.Value);
             allLines = new string[]{
-                $"BottleType: {bottleType}",
-                $"Mode: {modeString}"
+                $"Name: Bottle of {net_Name.Value}",
+                $"Mode: {modeString}",
+                "Switch Mode [Q/E]"
             };
             if (IsOwner)
             {

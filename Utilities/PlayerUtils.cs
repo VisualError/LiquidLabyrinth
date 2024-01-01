@@ -56,6 +56,7 @@ namespace LiquidLabyrinth.Utilities
 
         internal static void RevivePlayer(PlayerControllerB player, DeadBodyInfo bodyInfo, Vector3 spawnPosition)
         {
+			if (!player.isPlayerDead) return;
 			if(player.IsOwner || player.IsServer || player.IsHost)
             {
                 Object.Destroy(bodyInfo.gameObject);
@@ -104,14 +105,13 @@ namespace LiquidLabyrinth.Utilities
 				player.hasBegunSpectating = false;
 				HUDManager.Instance.RemoveSpectateUI();
 				HUDManager.Instance.gameOverAnimator.SetTrigger("revive");
+				HUDManager.Instance.HideHUD(false);
 				player.hinderedMultiplier = 1f;
 				player.isMovementHindered = 0;
 				player.sourcesCausingSinking = 0;
 				player.reverbPreset = StartOfRound.Instance.shipReverb;
 			}
-
 			StartOfRound.Instance.livingPlayers++;
-
 			SoundManager.Instance.earsRingingTimer = 0f;
 			player.voiceMuffledByEnemy = false;
 			SoundManager.Instance.playerVoicePitchTargets[player.playerClientId] = 1f;

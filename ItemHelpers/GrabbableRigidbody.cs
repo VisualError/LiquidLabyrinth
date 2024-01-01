@@ -20,6 +20,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public UnityEvent OnCollision = new UnityEvent();
         public UnityEvent OnInteractLocal = new UnityEvent();
         public UnityEvent OnInteractGlobal = new UnityEvent();
+        private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
         public bool floatWhileOrbiting;
         public float gravity = 9.8f;
         internal Rigidbody rb;
@@ -104,14 +105,23 @@ namespace LiquidLabyrinth.ItemHelpers
             }
         }
 
+        public override void OnNetworkSpawn()
+        {
+            base.OnNetworkSpawn();
+            if (IsHost || IsServer)
+            {
+                net_GrabbableToEnemies.Value = Plugin.Instance.IsGrabbableToEnemies.Value;
+            }
+            grabbableToEnemies = net_GrabbableToEnemies.Value;
+        }
+
         public virtual void OnCollisionEnter(Collision collision)
         {
-            if (!IsHost || !IsServer) return;
             if (IsClient)
             {
                 OnCollision_ClientRpc(collision.gameObject.tag, rb.velocity.magnitude);
             }
-            else
+            else if (IsServer)
             {
                 OnCollision_ServerRpc(collision.gameObject.tag, rb.velocity.magnitude);
             }
@@ -127,6 +137,11 @@ namespace LiquidLabyrinth.ItemHelpers
         public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
         {
             OnCollision?.Invoke();
+            if (itemAudio == null)
+            {
+                Plugin.Logger.LogWarning("ITEM AUDIO SOURCE DOESNT EXIST.");
+                return;
+            }
             if (objectTag == "Player")
             {
                 return;

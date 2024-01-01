@@ -1,6 +1,5 @@
 ﻿using GameNetcodeStuff;
 using LiquidLabyrinth.Utilities;
-using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -15,9 +14,9 @@ namespace LiquidLabyrinth.ItemHelpers
         public event UnityAction onThrowItem;
 
         public PlayerControllerB playerThrownBy;
-        private float t = 0f;
         public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
         public BoxCollider collider;
+        public SphereCollider headCollider; // TODO: Implement Throwable head class instead of doing this bs..
         public bool Holding = false;
         public bool LMBToThrow = true;
         public bool QToThrow = false;
@@ -36,10 +35,10 @@ namespace LiquidLabyrinth.ItemHelpers
             {
                 rb.isKinematic = false;
                 rb.AddForce(gameObject.transform.forward * 2f, ForceMode.Impulse);
-                t = 0f;
                 isThrown.Value = true;
             }
             collider = GetComponent<BoxCollider>();
+            headCollider = GetComponent<SphereCollider>();
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)
@@ -48,11 +47,11 @@ namespace LiquidLabyrinth.ItemHelpers
             Holding = buttonDown;
             if (!isThrown.Value && LMBToThrow && !buttonDown)
             {
+                playerThrownBy = playerHeldBy;
                 if (IsOwner)
                 {
                     rb.isKinematic = false;
                     throwDir.Value = gameObject.transform.forward;
-
                     // cast ray forward for 100 units, if it hit something, we take the direction from the object to the hit point
                     RaycastHit hit;
                     if (Physics.Raycast(playerThrownBy.gameplayCamera.transform.position, playerThrownBy.gameplayCamera.transform.forward, out hit, 100f, OtherUtils.MaskForLayer(gameObject.layer), QueryTriggerInteraction.Ignore))
@@ -77,6 +76,11 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public override void Update()
         {
+            if (rb == null)
+            {
+                Plugin.Logger.LogWarning($"Rigidbody for {name} doesn't exist. This shouldn't happen!");
+                return;
+            }
             if (isKinematic.Value != rb.isKinematic && !(IsHost || IsServer))
             {
                 rb.isKinematic = isKinematic.Value;
@@ -85,8 +89,29 @@ namespace LiquidLabyrinth.ItemHelpers
             {
                 isKinematic.Value = rb.isKinematic;
             }
-            collider.isTrigger = isKinematic.Value;
+            // code wack.
+            if(headCollider != null)
+            {
+                headCollider.isTrigger = isKinematic.Value;
+            }
+            if (collider != null)
+            {
+                collider.isTrigger = isKinematic.Value;
+            }
             base.Update();
+        }
+
+        public override void SetControlTipsForItem()
+        {
+            base.SetControlTipsForItem();
+            string[] allLines;
+            allLines = new string[]{
+                "Throw [Click]"
+            };
+            if (IsOwner)
+            {
+                HUDManager.Instance.ChangeControlTipMultiple(allLines, true, itemProperties);
+            }
         }
 
         public override void FixedUpdate()
@@ -94,16 +119,16 @@ namespace LiquidLabyrinth.ItemHelpers
             base.FixedUpdate();
             if (IsHost || IsServer)
             {
-                if (StartOfRound.Instance.timeSinceRoundStarted > 2f)
+                if (StartOfRound.Instance.timeSinceRoundStarted > 2)
                 {
                     rb.isKinematic = !StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase;
+                    //rb.isKinematic = !StartOfRound.Instance.shipDoorsEnabled;
                 }
-                isKinematic.Value = rb.isKinematic;
-                if (rb.isKinematic && !isHeld)
+                /*else if(!StartOfRound.Instance.inShipPhase && !isHeld)
                 {
-                    rb.position = gameObject.transform.position;
-                    rb.rotation = gameObject.transform.rotation;
-                }
+                    rb.isKinematic = StartOfRound.Instance.inShipPhase;
+                }*/
+                isKinematic.Value = rb.isKinematic;
                 if (isThrown.Value)
                 {
                     transform.rotation = oldRotation;
@@ -112,13 +137,6 @@ namespace LiquidLabyrinth.ItemHelpers
                         Quaternion targetRotation = Quaternion.LookRotation(rb.velocity);
                         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
                         oldRotation = transform.rotation;
-                    }
-
-                    t += Time.deltaTime;
-                    if (t > 5f)
-                    {
-                        isThrown.Value = false;
-                        rb.isKinematic = true;
                     }
                 }
             }
@@ -149,10 +167,9 @@ namespace LiquidLabyrinth.ItemHelpers
             onThrowItem?.Invoke();
             oldRotation = gameObject.transform.rotation;
             if (IsOwner)playerThrownBy.DiscardHeldObject();
-            t = 0f;
             rb.isKinematic = false;
             if(IsOwner) isThrown.Value = true;
-            rb.transform.Rotate(new Vector3(0, 90, 0)); // Rotates the bottle 90 degrees around the y-axis
+            transform.Rotate(itemProperties.rotationOffset); // so it no fucky. it look goody
 
             Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
             rb.AddForce(throwDir * throwForce, ForceMode.Impulse);
@@ -170,8 +187,7 @@ namespace LiquidLabyrinth.ItemHelpers
         public override void EquipItem()
         {
             base.EquipItem();
-            isThrown.Value = false;
-            t = 0f;
+            if (IsOwner) isThrown.Value = false;
         }
 
     }

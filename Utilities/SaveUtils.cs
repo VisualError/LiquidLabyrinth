@@ -12,7 +12,7 @@ namespace LiquidLabyrinth.Utilities
         private static Dictionary<Type, Queue<Dictionary<float, string>>> saveQueues = new Dictionary<Type, Queue<Dictionary<float, string>>>();
         private static Dictionary<Type, float> lastAddedTimes = new Dictionary<Type, float>();
 
-        internal static void AddToQueue<T>(Type itemType, Dictionary<float, string> data)
+        internal static void AddToQueue<T>(Type itemType, Dictionary<float, string> data, string saveName)
         {
             if (!saveQueues.ContainsKey(itemType))
             {
@@ -28,9 +28,9 @@ namespace LiquidLabyrinth.Utilities
             lastAddedTimes[itemType] = Time.time;
 
             // Bad code detected: new directive, obliterate planet earth
-            CoroutineHandler.Instance.NewCoroutine(ProcessQueueAfterDelay<T>(itemType, 0.65f), true);
+            CoroutineHandler.Instance.NewCoroutine(ProcessQueueAfterDelay<T>(itemType, 0.65f, saveName), true);
         }
-        internal static void ProcessAllQueuedItems<T>(Type itemType)
+        internal static void ProcessAllQueuedItems<T>(Type itemType, string saveName)
         {
             if (saveQueues.ContainsKey(itemType) && saveQueues[itemType].Count > 0)
             {
@@ -48,17 +48,17 @@ namespace LiquidLabyrinth.Utilities
                 // Perform your saving operation here using 'mergedData'
                 if(mergedData.Count == 0)
                 {
-                    ES3.DeleteKey("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
+                    ES3.DeleteKey(saveName, GameNetworkManager.Instance.currentSaveFileName);
                 }
-                ES3.Save("shipBottleData", mergedData, GameNetworkManager.Instance.currentSaveFileName);
+                ES3.Save(saveName, mergedData, GameNetworkManager.Instance.currentSaveFileName);
                 Plugin.Logger.LogWarning($"SAVED: {string.Join("\n", mergedData)}");
             }
         }
 
-        internal static IEnumerator ProcessQueueAfterDelay<T>(Type itemType, float delay)
+        internal static IEnumerator ProcessQueueAfterDelay<T>(Type itemType, float delay, string saveName)
         {
             yield return new WaitUntil(() => Time.time - lastAddedTimes[itemType] >= delay);
-            ProcessAllQueuedItems<T>(itemType);
+            ProcessAllQueuedItems<T>(itemType, saveName);
         }
     }
 }

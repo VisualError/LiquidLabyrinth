@@ -6,10 +6,13 @@ using LethalSettings.UI;
 using LethalSettings.UI.Components;
 using LiquidLabyrinth.Patches;
 using LiquidLabyrinth.Utilities;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using Unity.Netcode;
 using UnityEngine;
+using System.Linq;
+using LiquidLabyrinth.ItemHelpers;
 
 namespace LiquidLabyrinth
 {
@@ -25,8 +28,15 @@ namespace LiquidLabyrinth
         internal static Plugin Instance;
         internal ConfigEntry<bool> RevivePlayer;
         internal ConfigEntry<bool> NoGravityInOrbit;
+        internal ConfigEntry<bool> IsGrabbableToEnemies;
+        internal ConfigEntry<bool> UseSillyNames;
+        internal ConfigEntry<bool> SetAsShopItems;
+        internal ConfigEntry<int> BottleRarity;
+        internal int SliderValue;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
-
+        internal string[] sillyNames = { "wah", "woh", "yippie", "whau", "wuh", "whuh", "auh", ":3" };
+        internal List<HeadItem> headItemList = new List<HeadItem>();
+        internal List<PotionBottle> bottleItemList = new List<PotionBottle>();
 
         private void NetcodeWeaver()
         {
@@ -64,53 +74,112 @@ namespace LiquidLabyrinth
             Logger.LogWarning(sb.ToString());
 
 
+            OtherUtils.GenerateLayerMap();
+            Harmony.PatchAll(typeof(GameNetworkManagerPatch));
+            Harmony.PatchAll(typeof(PlayerControllerBPatch));
+            Harmony.PatchAll(typeof(TerminalPatch));
+            RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
+            NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
+            IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", true, "if enemies can pick up objects made by the mod");
+            UseSillyNames = Config.Bind("Fun", "Use Silly Names", false, "Silly overlaod");
+            SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[used for development] all registered items will become available to store.");
+            BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity");
+            SliderValue = BottleRarity.Value;
 
             // Bundle loader.
 
-            var bundle = AssetBundle.LoadFromMemory(Properties.Resources.liquidlabyrinth);
-            Item item = bundle.LoadAsset<Item>("Assets/Liquid Labyrinth/BottleItem.asset");
-            if (item != null)
+            AssetLoader.LoadAssetBundles();
+            try
             {
-                if (item.spawnPrefab.GetComponent<NetworkObject>() is NetworkObject obj && obj != null)
+                ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
                 {
-                    LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(item.spawnPrefab);
-                    Logger.LogWarning("Network Prefab Initialized!");
-                }
-                // Register the network prefab before registering items.
-                LethalLib.Modules.Items.RegisterScrap(item, 1000, LethalLib.Modules.Levels.LevelTypes.All);
-                LethalLib.Modules.Items.RegisterShopItem(item, -1);
-            }
-            else
-            {
-                Logger.LogWarning("Couldn't find AssetBundles.");
-            }
-
-            OtherUtils.GenerateLayerMap();
-            Harmony.PatchAll(typeof(GameNetworkManagerPatch));
-
-            RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
-            NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "ORBITTT");
-            ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
-            {
-                Name = PluginInfo.PLUGIN_NAME,
-                Id = PluginInfo.PLUGIN_GUID,
-                Description = "Liquid Labyrinth: Mysterious liquids",
-                MenuComponents = new MenuComponent[]
+                    Name = PluginInfo.PLUGIN_NAME,
+                    Id = PluginInfo.PLUGIN_GUID,
+                    Description = "Liquid Labyrinth: Mysterious liquids",
+                    MenuComponents = new MenuComponent[]
                 {
                     new ToggleComponent
                     {
-                        DefaultToggled = RevivePlayer.Value,
+                        Value = RevivePlayer.Value,
                         Text = RevivePlayer.Description.Description,
                         OnValueChanged = (self, value) => RevivePlayer.Value = value
                     },
                     new ToggleComponent
                     {
-                        DefaultToggled = NoGravityInOrbit.Value,
+                        Value = NoGravityInOrbit.Value,
                         Text = NoGravityInOrbit.Description.Description,
                         OnValueChanged = (self, value) => NoGravityInOrbit.Value = value
+                    },
+                    new ToggleComponent
+                    {
+                        Value = IsGrabbableToEnemies.Value,
+                        Text = IsGrabbableToEnemies.Description.Description,
+                        OnValueChanged = (self, value) => IsGrabbableToEnemies.Value = value
+                    },
+                    new ToggleComponent
+                    {
+                        Value = UseSillyNames.Value,
+                        Text = UseSillyNames.Description.Description,
+                        OnValueChanged = (self, value) => UseSillyNames.Value = value
+                    },
+                    new ToggleComponent
+                    {
+                        Value = SetAsShopItems.Value,
+                        Text = SetAsShopItems.Description.Description,
+                        OnValueChanged = (self, value) =>
+                        {
+                            SetAsShopItems.Value = value;
+                            foreach(KeyValuePair<string, Object> obj in AssetLoader.assetsDictionary)
+                            {
+                                if(obj.Value is Item item)
+                                {
+                                    var shopItemExists = LethalLib.Modules.Items.shopItems.Any(si => si.item == item);
+                                    if (value && !shopItemExists)
+                                    {
+                                        // Value is true and the item doesn't exist in the shopItems list, so add it.
+                                        LethalLib.Modules.Items.ShopItem shopItem = new LethalLib.Modules.Items.ShopItem(item, null, null, null, -1); // -1 so price isn't 0.
+                                        shopItem.modName = Assembly.GetExecutingAssembly().GetName().Name;
+                                        LethalLib.Modules.Items.shopItems.Add(shopItem);
+                                        Logger.LogWarning($"Adding: {shopItem.item.itemName}");
+                                    }
+                                    else if (!value && shopItemExists)
+                                    {
+                                        // Value is false and the item exists in the shopItems list, so remove it.
+                                        var shopItemToRemove = LethalLib.Modules.Items.shopItems.FirstOrDefault(si => si.item == item);
+                                        if (shopItemToRemove != null)
+                                        {
+                                            LethalLib.Modules.Items.shopItems.Remove(shopItemToRemove);
+                                            Logger.LogWarning($"Removing: {shopItemToRemove.item.itemName}");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    new VerticalComponent
+                    {
+                        Children = new MenuComponent[]
+                        {
+                            new SliderComponent
+                            {
+                                 WholeNumbers = true,
+                                 MaxValue = 1000,
+                                 MinValue = 0,
+                                 Text = BottleRarity.Description.Description,
+                                 Value = BottleRarity.Value,
+                                 ShowValue = true,
+                                 OnValueChanged = (self, value) => BottleRarity.Value = (int)value
+                            }
+                        }
                     }
                 }
-            });
+                }); // TODO: Dynamically add components using reflection on bepinex configs;
+            }
+            catch(System.Exception err)
+            {
+                Logger.LogWarning("Couldn't load LethalSettings for Configs!");
+                Logger.LogError(err);
+            }
         }
     }
 }
