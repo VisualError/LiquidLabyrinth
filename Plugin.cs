@@ -37,6 +37,66 @@ namespace LiquidLabyrinth
         internal int SliderValue;
         private readonly Harmony Harmony = new(PluginInfo.PLUGIN_GUID);
         internal string[] sillyNames = { "wah", "woh", "yippie", "whau", "wuh", "whuh", "auh", ":3" };
+        List<string> scientificNames = new List<string>()
+        {
+            "Quasarion Helium",
+            "Neutronium Carbon",
+            "Protonium Oxygen",
+            "Electronium Nitrogen",
+            "Photonium Phosphorus",
+            "Gravitonium Sulfur",
+            "Meteorium Chlorine",
+            "Cosmonium Snezium",
+            "Quantumium Red",
+            "Subatomicium Blue",
+            "Interstellarium Green",
+            "Galacticium Purple",
+            "Cosmicium Yellow",
+            "Starlightium Pink",
+            "Nebulonium Teal",
+            "Cometium Brown",
+            "Asteroidium Grey",
+            "Planetium Black ",
+            "Galaxyon White",
+            "Universeon Silver",
+            "Multiverseon Gold",
+            "Parallelon Bronze",
+            "Dimensionon Copper",
+            "Timeon Zinc",
+            "Spaceon Tin",
+            "Realityon Lead",
+            "Existenceon Nickel",
+            "Infinityon Aluminum",
+            "Eternityon Iron",
+            "Immortalityon Steel",
+            // Periodic Elements
+   "Helium", "Neon", "Argon", "Krypton", "Xenon", "Radon",
+   "Beryllium", "Magnesium", "Calcium", "Strontium", "Barium",
+   "Hafnium", "Tantalum", "Tungsten", "Rhenium", "Osmium",
+   "Iridium", "Platinum", "Gold", "Silver", "Cadmium",
+   "Indium", "Tin", "Antimony", "Tellurium", "Polonium",
+   "Astatine", "Francium", "Radium", "Actinium", "Thorium",
+   "Protactinium", "Uranium", "Neptunium", "Plutonium", "Americium",
+   "Curium", "Berkelium", "Californium", "Einsteinium", "Fermium",
+   "Mendelevium", "Nobelium", "Lawrencium", "Rutherfordium", "Dubnium",
+   "Seaborgium", "Bohrium", "Hassium", "Meitnerium", "Ununnilium",
+   "Unununium", "Ununvium", "Ununhexium", "Ununseptium", "Ununoctium",
+   // Scientific Concepts
+   "Quantum Physics", "Relativity", "Newtonian Physics", "Schrodinger Equation",
+   "Einstein","DarkMatter",
+   "Dark Energy", "Quantum Entanglement", "Higgs Boson",
+   "GravitationalWave", "Wormhole", "Tachyon", "Singularity", "EventHorizon",
+   "Neutrino", "Muon", "Lepton", "Quark", "Gluon",
+   "Atom", "ElectronShell", "Proton", "Electron", "NuclearFusion",
+   "Nuclear Fission", "AtomicBond", "Isotope", "RadioactiveDecay", "Alpha Particle",
+   "Beta Particle", "GammaRay", "Microwave", "Radio Wave", "GammaRay", "X-Ray",
+   "Ultraviolet Ray", "Visible Light", "Infrared Ray", "Microwave", "RadioWave",
+   "Cosmic Ray", "Hubble Constant",
+   "Big Crunch", "Heat Death", "Black Hole", "Quasar", "Pulsar",
+   "Nebula", "Galaxy", "Star Cluster", "Exoplanet", "Solar Wind",
+   "Solar Flare", "Nova", "Supernova", "Pulsar", "White Dwarf",
+   "Red Giant", "Blue Giant", "Star System"
+        };
         internal List<HeadItem> headItemList = new List<HeadItem>();
         internal List<PotionBottle> bottleItemList = new List<PotionBottle>();
 
@@ -79,7 +139,7 @@ namespace LiquidLabyrinth
             OtherUtils.GenerateLayerMap();
             Harmony.PatchAll(typeof(GameNetworkManagerPatch));
             Harmony.PatchAll(typeof(PlayerControllerBPatch));
-            Harmony.PatchAll(typeof(TerminalPatch));
+            //Harmony.PatchAll(typeof(TerminalPatch));
             Harmony.PatchAll(typeof(StartOfRoundPatch));
             RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
             NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
@@ -89,6 +149,11 @@ namespace LiquidLabyrinth
             BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity");
             spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] revive has a chance to spawn enemy, let all enemies be spawned.");
             SliderValue = BottleRarity.Value;
+
+            foreach (var name in scientificNames)
+            {
+                MarkovChain.TrainMarkovChain(name);
+            }
             // Bundle loader.
 
             AssetLoader.LoadAssetBundles();
@@ -132,31 +197,6 @@ namespace LiquidLabyrinth
                         OnValueChanged = (self, value) =>
                         {
                             SetAsShopItems.Value = value;
-                            foreach(KeyValuePair<string, Object> obj in AssetLoader.assetsDictionary)
-                            {
-                                if(obj.Value is Item item)
-                                {
-                                    var shopItemExists = LethalLib.Modules.Items.shopItems.Any(si => si.item == item);
-                                    if (value && !shopItemExists)
-                                    {
-                                        // Value is true and the item doesn't exist in the shopItems list, so add it.
-                                        LethalLib.Modules.Items.ShopItem shopItem = new LethalLib.Modules.Items.ShopItem(item, null, null, null, -1); // -1 so price isn't 0.
-                                        shopItem.modName = Assembly.GetExecutingAssembly().GetName().Name;
-                                        LethalLib.Modules.Items.shopItems.Add(shopItem);
-                                        Logger.LogWarning($"Adding: {shopItem.item.itemName}");
-                                    }
-                                    else if (!value && shopItemExists)
-                                    {
-                                        // Value is false and the item exists in the shopItems list, so remove it.
-                                        var shopItemToRemove = LethalLib.Modules.Items.shopItems.FirstOrDefault(si => si.item == item);
-                                        if (shopItemToRemove != null)
-                                        {
-                                            LethalLib.Modules.Items.shopItems.Remove(shopItemToRemove);
-                                            Logger.LogWarning($"Removing: {shopItemToRemove.item.itemName}");
-                                        }
-                                    }
-                                }
-                            }
                         }
                     },
                     new ToggleComponent

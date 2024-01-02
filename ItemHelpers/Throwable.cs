@@ -11,7 +11,7 @@ namespace LiquidLabyrinth.ItemHelpers
     {
 
         // EVENTS:
-        public event UnityAction onThrowItem;
+        public event UnityAction OnThrowItem;
 
         public PlayerControllerB playerThrownBy;
         public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -51,13 +51,7 @@ namespace LiquidLabyrinth.ItemHelpers
                 if (IsOwner)
                 {
                     rb.isKinematic = false;
-                    throwDir.Value = gameObject.transform.forward;
-                    // cast ray forward for 100 units, if it hit something, we take the direction from the object to the hit point
-                    RaycastHit hit;
-                    if (Physics.Raycast(playerThrownBy.gameplayCamera.transform.position, playerThrownBy.gameplayCamera.transform.forward, out hit, 100f, OtherUtils.MaskForLayer(gameObject.layer), QueryTriggerInteraction.Ignore))
-                    {
-                        throwDir.Value = (hit.point - gameObject.transform.position).normalized;
-                    }
+                    throwDir.Value = playerHeldBy.gameplayCamera.transform.forward;
                     Throw_ServerRpc(throwDir.Value);
                 }
             }
@@ -135,7 +129,7 @@ namespace LiquidLabyrinth.ItemHelpers
                     if (rb.velocity.magnitude > 0.1f)
                     {
                         Quaternion targetRotation = Quaternion.LookRotation(rb.velocity);
-                        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
+                        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 4f);
                         oldRotation = transform.rotation;
                     }
                 }
@@ -164,7 +158,7 @@ namespace LiquidLabyrinth.ItemHelpers
             playerThrownBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
             playerThrownBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
             yield return new WaitForSeconds(.25f);
-            onThrowItem?.Invoke();
+            OnThrowItem?.Invoke();
             oldRotation = gameObject.transform.rotation;
             if (IsOwner) playerThrownBy.DiscardHeldObject();
             rb.isKinematic = false;

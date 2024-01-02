@@ -177,8 +177,8 @@ namespace LiquidLabyrinth.ItemHelpers
 
         public override void InteractItem()
         {
-            OnInteractLocal?.Invoke();
             base.InteractItem();
+            OnInteractLocal?.Invoke();
             itemAudio.pitch = 1f;
         }
 

@@ -257,7 +257,7 @@ namespace LiquidLabyrinth.ItemHelpers
                 {
                     if (nodeProperties.headerText == "BottleType")
                     {
-                        nodeProperties.headerText += UnityEngine.Random.Range(1, 12);
+                        nodeProperties.headerText = MarkovChain.GenerateText(UnityEngine.Random.Range(3,20));
                         Plugin.Logger.LogWarning("generating random name");
                     }
                     bottleType = nodeProperties.headerText;
@@ -295,6 +295,7 @@ namespace LiquidLabyrinth.ItemHelpers
             if (Liquid != null)
             {
                 rend = Liquid.GetComponent<MeshRenderer>();
+                rend.material.SetFloat("_emission", 0.4f);
                 rend.material.SetColor("_LiquidColor", net_color.Value);
                 rend.material.SetColor("_SurfaceColor", net_lighterColor.Value);
                 rend.material.SetFloat("_Fill", net_Fill.Value);
