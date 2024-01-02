@@ -39,7 +39,7 @@ jobs:
           target-framework: "netstandard2.1"
 
       - name: Publish solution
-        run: dotnet -c Release publish -p:NETCODE_PATCHER_DIR="${{ steps.setup-netcode-patcher.outputs.netcode-patcher-directory }}"
+        run: dotnet publish -c Release -p:NETCODE_PATCHER_DIR="${{ steps.setup-netcode-patcher.outputs.netcode-patcher-directory }}"
 
       - name: Upload Thunderstore artifact
         uses: actions/upload-artifact@v4
