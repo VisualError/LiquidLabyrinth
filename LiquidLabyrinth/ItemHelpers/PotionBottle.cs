@@ -400,7 +400,7 @@ class PotionBottle : Throwable
         if (!Plugin.Instance.spawnRandomEnemy.Value)
             return Plugin.Instance.enemyTypes["Masked"];
 
-        throw new NotImplementedException("Random enemy selection has not been implemented!");
+        return Plugin.Instance.enemyTypes.ElementAt(UnityEngine.Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
     }
         
     void ReviveAsEnemy(PlayerControllerB player, Vector3 navMeshPosition)

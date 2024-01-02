@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## Version [0.0.4]
+### Added
+- Added Spawn random enemy on revive functionality on config.
+
 ## Version [0.0.3]
 
 ### Fixed

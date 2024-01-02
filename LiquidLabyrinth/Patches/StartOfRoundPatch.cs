@@ -29,7 +29,7 @@ class StartOfRoundPatch
     [HarmonyPrefix]
     static void AwakePrefix()
     {
-        if (!Plugin.Instance.SetAsShopItems.Value || !(NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) 
+        if (Plugin.Instance.SetAsShopItems.Value || !(NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) 
         {
             foreach(LethalLib.Modules.Items.ShopItem shopItem in LethalLib.Modules.Items.shopItems)
             {
