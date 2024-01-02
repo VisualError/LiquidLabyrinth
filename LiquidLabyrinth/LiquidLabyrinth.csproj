@@ -64,7 +64,7 @@
       <HintPath>$(SolutionDir)lib/willis81808-LethalSettings/LethalSettings.dll</HintPath>
     </Reference>
     <Reference Include="LethalLib">
-      <HintPath>$(SolutionDir)/lib/Evaisa-LethalLib/plugins/LethalLib/LethalLib.dll</HintPath>
+      <HintPath>$(SolutionDir)lib/Evaisa-LethalLib/plugins/LethalLib/LethalLib.dll</HintPath>
     </Reference>
   </ItemGroup>
   
@@ -72,18 +72,22 @@
     <MakeDir
       Directories="../lib"
       Condition="!Exists('../lib')"
-  />
+    />
   </Target>
   
-  <Target Name="FetchLethalSettings" DependsOnTargets="EnsureLibDir" BeforeTargets="BeforeBuild" Condition="$(CI) == 'true'">
+  <Target Name="FetchLethalSettings" DependsOnTargets="EnsureLibDir">
     <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.2.2/ -O ../lib/willis81808-LethalSettings.zip"/>
     <Exec Command="unzip -o ../lib/willis81808-LethalSettings.zip LethalSettings.dll -d ../lib/willis81808-LethalSettings"/>
   </Target>
 
-  <Target Name="FetchLethalLib" DependsOnTargets="EnsureLibDir" BeforeTargets="BeforeBuild" Condition="$(CI) == 'true'">
+  <Target Name="FetchLethalLib" DependsOnTargets="EnsureLibDir">
     <Message Importance="high" Text="@(ReferencePathWithRefAssemblies)"/>
     <Exec Command="wget https://thunderstore.io/package/download/Evaisa/LethalLib/0.10.1/ -O ../lib/Evaisa-LethalLib.zip"/>
     <Exec Command="unzip -o ../lib/Evaisa-LethalLib.zip plugins/LethalLib/LethalLib.dll -d ../lib/Evaisa-LethalLib"/>
+  </Target>
+  
+  <Target Name="FetchDependencies">
+    <CallTarget Targets="FetchLethalSettings;FetchLethalLib"/>
   </Target>
 
   <Target Name="SetPluginVersion" BeforeTargets="AddGeneratedFile" DependsOnTargets="MinVer">
@@ -92,7 +96,22 @@
     </PropertyGroup>
   </Target>
 
-  <Target Name="PackThunderstore" AfterTargets="Publish">
+  <Target Name="NetcodePatch" AfterTargets="PostBuildEvent">
+    <Message Importance="high" Text="Running NetcodePatcher..." />
+    <CallTarget Condition="$(OS) == 'Windows_NT'" Targets="NetcodePatchWindows" />
+    <CallTarget Condition="$(OS) != 'Windows_NT'" Targets="NetcodePatchUnix" />
+    <Message Importance="high" Text="NetcodePatcher process completed." />
+  </Target>
+
+  <Target Name="NetcodePatchWindows">
+    <Exec Command="cd $(NETCODE_PATCHER_DIR)&#xD;&#xA;NetcodePatcher.dll $(TargetDir) deps/" />
+  </Target>
+
+  <Target Name="NetcodePatchUnix">
+    <Exec Command="cd $(NETCODE_PATCHER_DIR)&#xD;&#xA;dotnet NetcodePatcher.dll $(TargetDir) deps/" />
+  </Target>
+
+  <Target Name="PackThunderstore" DependsOnTargets="NetcodePatch" AfterTargets="Publish">
     <Warning Code="LC001" Text="Plugin was not built in Release mode, users may experience an impact to performance!" Condition=" '$(Configuration)' != 'Release' " />
     <PropertyGroup>
       <PlainVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</PlainVersion>
