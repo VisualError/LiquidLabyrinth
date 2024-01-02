@@ -15,7 +15,7 @@ using LiquidLabyrinth.ItemHelpers;
 namespace LiquidLabyrinth;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
-[BepInDependency("evaisa.lethallib", "0.11.1")]
+[BepInDependency("evaisa.lethallib", "0.10.1")]
 [BepInDependency("com.willis.lc.lethalsettings", "1.2.2")]
 [BepInProcess("Lethal Company.exe")]
 internal class Plugin : BaseUnityPlugin
