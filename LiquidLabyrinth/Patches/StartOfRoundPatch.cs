@@ -1,22 +1,38 @@
 ﻿using HarmonyLib;
+using Unity.Netcode;
 using UnityEngine;
 
-namespace LiquidLabyrinth.Patches;
-
-[HarmonyPatch(typeof(StartOfRound))]
-class StartOfRoundPatch
+namespace LiquidLabyrinth.Patches
 {
-    [HarmonyPatch(nameof(StartOfRound.Awake))]
-    [HarmonyPostfix]
-    static void AwakePostfix()
+    [HarmonyPatch(typeof(StartOfRound))]
+    class StartOfRoundPatch
     {
-        Plugin.Logger.LogWarning("awake");
-        foreach (EnemyType type in Resources.FindObjectsOfTypeAll<EnemyType>())
+        [HarmonyPatch(nameof(StartOfRound.Awake))]
+        [HarmonyPostfix]
+        static void AwakePostfix()
         {
-            if (!Plugin.Instance.enemyTypes.ContainsKey(type.enemyName))
+            Plugin.Logger.LogWarning("awake");
+            //Enemy dictionary init.
+            foreach (EnemyType type in Resources.FindObjectsOfTypeAll<EnemyType>())
             {
-                Plugin.Instance.enemyTypes.Add(type.enemyName, type);
-                Plugin.Logger.LogWarning($"Added enemy to list: {type.enemyName}");
+                if (!Plugin.Instance.enemyTypes.ContainsKey(type.enemyName))
+                {
+                    Plugin.Instance.enemyTypes.Add(type.enemyName, type);
+                    Plugin.Logger.LogWarning($"Added enemy to list: {type.enemyName}");
+                }
+            }
+        }
+
+        [HarmonyPatch(nameof(StartOfRound.Awake))]
+        [HarmonyPrefix]
+        static void AwakePrefix()
+        {
+            if (!Plugin.Instance.SetAsShopItems.Value || !(NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) 
+            {
+                foreach(LethalLib.Modules.Items.ShopItem shopItem in LethalLib.Modules.Items.shopItems)
+                {
+                    LethalLib.Modules.Items.RemoveShopItem(shopItem.item);
+                }
             }
         }
     }
