@@ -27,7 +27,6 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> RevivePlayer;
     internal ConfigEntry<bool> NoGravityInOrbit;
     internal ConfigEntry<bool> IsGrabbableToEnemies;
-    internal ConfigEntry<bool> UseSillyNames;
     internal ConfigEntry<bool> SetAsShopItems;
     internal ConfigEntry<bool> UseCustomNameList;
     internal ConfigEntry<int> BottleRarity;
@@ -36,7 +35,7 @@ internal class Plugin : BaseUnityPlugin
     internal Dictionary<string, EnemyType> enemyTypes = new();
     internal int SliderValue;
     private readonly Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
-    string nameList;
+    string nameList = "";
     List<string> scientificNames = [
         "Quasarion Helium",
         "Neutronium Carbon",
@@ -183,12 +182,6 @@ internal class Plugin : BaseUnityPlugin
                     },
                     new ToggleComponent
                     {
-                        Value = UseSillyNames.Value,
-                        Text = UseSillyNames.Description.Description,
-                        OnValueChanged = (self, value) => UseSillyNames.Value = value
-                    },
-                    new ToggleComponent
-                    {
                         Value = SetAsShopItems.Value,
                         Text = SetAsShopItems.Description.Description,
                         OnValueChanged = (self, value) =>
@@ -231,7 +224,7 @@ internal class Plugin : BaseUnityPlugin
                         {
                             new InputComponent
                             {
-                                Placeholder=customNameList.Value + "[currently doesn't work]",
+                                Placeholder="[currently doesn't work]",
                                 Value=customNameList.Value,
                                 OnValueChanged = (self, value) => nameList = value
                             },
