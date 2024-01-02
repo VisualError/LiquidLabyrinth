@@ -30,11 +30,12 @@
   <PropertyGroup>
     <LETHAL_COMPANY_DIR>C:/Program Files (x86)/Steam/steamapps/common/Lethal Company</LETHAL_COMPANY_DIR>
     <TEST_PROFILE_DIR>$(APPDATA)/r2modmanPlus-local/LethalCompany/profiles/Test Liquid Labyrinth</TEST_PROFILE_DIR>
+    <NETCODE_PATCHER_DIR>$(SolutionDir)NetcodePatcher</NETCODE_PATCHER_DIR>
   </PropertyGroup>
 
     <!-- Create your 'Test Profile' using your modman of choice before enabling this. 
     Enable by setting the Condition attribute to "true". *nix users should switch out `copy` for `cp`. -->
-    <Target Name="CopyToTestProfile" AfterTargets="PostBuildEvent" Condition="false">
+    <Target Name="CopyToTestProfile" DependsOnTargets="NetcodePatch" AfterTargets="PostBuildEvent" Condition="false">
         <MakeDir
                 Directories="$(TEST_PROFILE_DIR)/BepInEx/plugins/Ryokune-Liquid_Labyrinth"
                 Condition="Exists('$(TEST_PROFILE_DIR)') And !Exists('$(TEST_PROFILE_DIR)/BepInEx/plugins/Ryokune-Liquid_Labyrinth')"
