@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## Version [0.0.2]
+
+### Added
+
+- Added randomly generated names
+- Added head item.. :)
+- Fixed saves (Will randomize saves on older versions, but that doesn't matter)
+- More settings to mess around with.
+
 ## Version [0.0.1]
 
 ### Added
@@ -22,3 +31,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Bottles`: Throwing, Drinking
 - Revive with bottle break (configurable)
 - Ingame config using LethalSettings
+
