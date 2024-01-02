@@ -1,0 +1,39 @@
+[config]
+schemaVersion = "0.0.1"
+
+[general]
+repository = "https://thunderstore.io"
+
+[package]
+namespace = "Ryokune"
+name = "Liquid_Labyrinth"
+description = "Crazy potions and the like!"
+websiteUrl = "https://github.com/VisualError/LiquidLabyrinth"
+containsNsfwContent = false
+[package.dependencies]
+BepInEx-BepInExPack = "5.4.2100"
+Evaisa-LethalLib = "0.10.1"
+willis81808-LethalSettings = "1.2.2"
+
+[build]
+icon = "./icon.png"
+readme = "../README.md"
+outdir = "../dist"
+
+[[build.copy]]
+source = "../LiquidLabyrinth/bin/com.github.visualerror.liquid_labyrinth.dll"
+target = "BepInEx/plugins/com.github.visualerror.liquid_labyrinth.dll"
+
+[[build.copy]]
+source = "../LICENSE"
+target = "LICENSE"
+
+[[build.copy]]
+source = "../CHANGELOG.md"
+target = "CHANGELOG.md"
+
+[publish]
+communities = [ "lethal-company", ]
+
+[publish.categories]
+lethal-company = [ "mods", "bepinex", ]
