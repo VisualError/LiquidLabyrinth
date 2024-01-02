@@ -19,7 +19,7 @@ class GameNetworkManagerPatch
         {
             if (item.itemProperties.saveItemVariable && item.GetType().Equals(typeof(PotionBottle)))
             {
-                Plugin.Logger.Log(BepInEx.Logging.LogLevel.All, "FOUND BOTTLE HAHA");
+                //Plugin.Logger.Log(BepInEx.Logging.LogLevel.All, "FOUND BOTTLE HAHA");
                 //CoroutineHandler.Instance.NewCoroutine(SaveUtils.ProcessQueueAfterDelay<PotionBottle>(item.GetType(), 0.5f));
             }
         }

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
@@ -18,15 +18,15 @@
   <!-- make all references non-private, so they won't be copied to the output folder -->
   <Target Name="ClearReferenceCopyLocalPaths" AfterTargets="ResolveAssemblyReferences">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"/>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" />
     </ItemGroup>
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all"/>
-    <PackageReference Include="BepInEx.Analyzers" Version="1.0.8" PrivateAssets="all"/>
-    <PackageReference Include="BepInEx.Core" Version="5.4.21"/>
-    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0"/>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Analyzers" Version="1.0.8" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,7 +34,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="UnityEngine.Modules" Version="2022.3.9"/>
+    <PackageReference Include="UnityEngine.Modules" Version="2022.3.9" />
   </ItemGroup>
 
   <ItemGroup Condition="$(CI) != 'true'">
@@ -59,7 +59,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="$(CI) == 'true'">
-    <PackageReference Include="LethalCompany.GameLibs.Steam" Version="45.0.2-alpha.1"/>
+    <PackageReference Include="LethalCompany.GameLibs.Steam" Version="45.0.2-alpha.1" />
     <Reference Include="LethalSettings">
       <HintPath>$(SolutionDir)lib/willis81808-LethalSettings/LethalSettings.dll</HintPath>
     </Reference>
@@ -67,27 +67,28 @@
       <HintPath>$(SolutionDir)lib/Evaisa-LethalLib/plugins/LethalLib/LethalLib.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
   
   <Target Name="EnsureLibDir">
-    <MakeDir
-      Directories="../lib"
-      Condition="!Exists('../lib')"
-    />
+    <MakeDir Directories="../lib" Condition="!Exists('../lib')" />
   </Target>
   
   <Target Name="FetchLethalSettings" DependsOnTargets="EnsureLibDir">
-    <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.2.2/ -O ../lib/willis81808-LethalSettings.zip"/>
-    <Exec Command="unzip -o ../lib/willis81808-LethalSettings.zip LethalSettings.dll -d ../lib/willis81808-LethalSettings"/>
+    <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.2.2/ -O ../lib/willis81808-LethalSettings.zip" />
+    <Exec Command="unzip -o ../lib/willis81808-LethalSettings.zip LethalSettings.dll -d ../lib/willis81808-LethalSettings" />
   </Target>
 
   <Target Name="FetchLethalLib" DependsOnTargets="EnsureLibDir">
-    <Message Importance="high" Text="@(ReferencePathWithRefAssemblies)"/>
-    <Exec Command="wget https://thunderstore.io/package/download/Evaisa/LethalLib/0.10.1/ -O ../lib/Evaisa-LethalLib.zip"/>
-    <Exec Command="unzip -o ../lib/Evaisa-LethalLib.zip plugins/LethalLib/LethalLib.dll -d ../lib/Evaisa-LethalLib"/>
+    <Message Importance="high" Text="@(ReferencePathWithRefAssemblies)" />
+    <Exec Command="wget https://thunderstore.io/package/download/Evaisa/LethalLib/0.10.1/ -O ../lib/Evaisa-LethalLib.zip" />
+    <Exec Command="unzip -o ../lib/Evaisa-LethalLib.zip plugins/LethalLib/LethalLib.dll -d ../lib/Evaisa-LethalLib" />
   </Target>
   
   <Target Name="FetchDependencies">
-    <CallTarget Targets="FetchLethalSettings;FetchLethalLib"/>
+    <CallTarget Targets="FetchLethalSettings;FetchLethalLib" />
   </Target>
 
   <Target Name="SetPluginVersion" BeforeTargets="AddGeneratedFile" DependsOnTargets="MinVer">
@@ -104,7 +105,7 @@
   </Target>
 
   <Target Name="NetcodePatchWindows">
-    <Exec Command="cd $(NETCODE_PATCHER_DIR)&#xD;&#xA;NetcodePatcher.dll $(TargetDir) deps/" />
+    <Exec Command="cd /d $(NETCODE_PATCHER_DIR)&#xD;&#xA;NetcodePatcher.dll $(TargetDir) deps/" />
   </Target>
 
   <Target Name="NetcodePatchUnix">
@@ -116,10 +117,10 @@
     <PropertyGroup>
       <PlainVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</PlainVersion>
     </PropertyGroup>
-    <Exec Command="dotnet tcli build --config-path $(SolutionDir)assets/thunderstore.toml --package-version $(PlainVersion)"/>
+    <Exec Command="dotnet tcli build --config-path $(SolutionDir)assets/thunderstore.toml --package-version $(PlainVersion)" />
     <ItemGroup>
-      <FilesToRename Include="$(SolutionDir)dist/*-$(PlainVersion).zip"/>
+      <FilesToRename Include="$(SolutionDir)dist/*-$(PlainVersion).zip" />
     </ItemGroup>
-    <Move SourceFiles="@(FilesToRename)" DestinationFiles="@(FilesToRename -&gt; Replace($(PlainVersion), $(MinVerVersion)))"/>
+    <Move SourceFiles="@(FilesToRename)" DestinationFiles="@(FilesToRename -&gt; Replace($(PlainVersion), $(MinVerVersion)))" />
   </Target>
 </Project>

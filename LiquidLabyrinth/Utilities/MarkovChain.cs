@@ -32,16 +32,30 @@ internal class MarkovChain
             markovChain[currentChar][nextChar][nextNextChar]++;
         }
     }
-    internal static string GenerateText(int length)
+    private static bool IsSpecialCharacter(char character)
+    {
+        // Add your logic to determine if the character is special
+        // For example, you might check if it's a punctuation mark, symbol, etc.
+        return char.IsPunctuation(character) || char.IsSymbol(character);
+    }
+
+    internal static string GenerateText(int length, int max)
     {
         StringBuilder sb = new StringBuilder();
 
         // Choose a random initial character
-        char currentChar = char.ToUpper(markovChain.Keys.ElementAt(UnityEngine.Random.Range(0, markovChain.Count)));
+        char currentChar;
+        do
+        {
+            // Choose a random initial character
+            currentChar = char.ToUpper(markovChain.Keys.ElementAt(UnityEngine.Random.Range(0, markovChain.Count)));
+        } while (IsSpecialCharacter(currentChar));
+        if (!markovChain.ContainsKey(currentChar)) currentChar = char.ToLower(currentChar); // If the uppercase variant doesn't exist for some reason, do this.
         sb.Append(currentChar);
-
+        int charactersAfterSpace = 0;
         // Follow the Markov chain until we reach the desired length
-        for (int i = 0; i < length - 1; i++)
+        int i;
+        for (i = 0; i < length - 1; i++)
         {
             // Choose a random next character based on the counts in the Markov chain
             var possibleNextChars = markovChain[currentChar];
@@ -57,10 +71,24 @@ internal class MarkovChain
                 }
                 rand -= innerTotalCount;
             }
-
+            charactersAfterSpace++;
+            if ((i >= length - 2 || currentChar == ' ') && charactersAfterSpace <= 2)
+            {
+                Plugin.Logger.Log(BepInEx.Logging.LogLevel.All, "Word ended too small, adding additional characters.");
+                i-=4;
+                if(currentChar == ' ') continue;
+            }
+            if(currentChar == ' ')
+            {
+                charactersAfterSpace = 0;
+            }
             sb.Append(currentChar);
         }
-
+        if(sb.Length > max) // This can happen because of the if(i >= length-2 && charactersAfterSpace <= 2) statement. Could generate some very, very long names.
+        {
+            Plugin.Logger.Log(BepInEx.Logging.LogLevel.All, $"Generated word was bigger than {max} characters, recreating..");
+            return GenerateText(length, max);
+        }
         return sb.ToString();
     }
 }

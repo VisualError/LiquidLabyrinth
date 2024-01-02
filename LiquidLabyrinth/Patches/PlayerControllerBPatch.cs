@@ -30,14 +30,6 @@ internal class PlayerControllerBPatch
 
     }*/
 
-    [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.Awake))]
-    [HarmonyPrefix]
-    static bool StartOfRound_Awake()
-    {
-        Plugin.Instance.headItemList.Clear();
-        return true;
-    }
-
     /*[HarmonyPatch(typeof(DeadBodyInfo), "Start")]
     [HarmonyPrefix]
     static bool DeadBodyInfo_AwakePatch(DeadBodyInfo __instance)

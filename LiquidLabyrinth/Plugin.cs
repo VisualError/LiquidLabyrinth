@@ -11,6 +11,7 @@ using System.Reflection;
 using System.Text;
 using UnityEngine;
 using LiquidLabyrinth.ItemHelpers;
+using System.Globalization;
 
 namespace LiquidLabyrinth;
 
@@ -28,12 +29,14 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> IsGrabbableToEnemies;
     internal ConfigEntry<bool> UseSillyNames;
     internal ConfigEntry<bool> SetAsShopItems;
+    internal ConfigEntry<bool> UseCustomNameList;
     internal ConfigEntry<int> BottleRarity;
     internal ConfigEntry<bool> spawnRandomEnemy;
+    internal ConfigEntry<string> customNameList;
     internal Dictionary<string, EnemyType> enemyTypes = new();
     internal int SliderValue;
     private readonly Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
-    internal string[] sillyNames = ["wah", "woh", "yippie", "whau", "wuh", "whuh", "auh", ":3"];
+    string nameList;
     List<string> scientificNames = [
         "Quasarion Helium",
         "Neutronium Carbon",
@@ -95,7 +98,6 @@ internal class Plugin : BaseUnityPlugin
     ];
     internal readonly List<HeadItem> headItemList = new();
     internal readonly List<PotionBottle> bottleItemList = new();
-
     private void NetcodeWeaver()
     {
         var types = Assembly.GetExecutingAssembly().GetTypes();
@@ -119,33 +121,32 @@ internal class Plugin : BaseUnityPlugin
         Instance = this;
         Logger = base.Logger;
         NetcodeWeaver();
-        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!!!!!!!!");
+        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded.");
         StringBuilder sb = new();
         sb.AppendLine();
-        sb.AppendLine(" ___      ___   _______  __   __  ___   ______     ___      _______  _______  __   __  ______    ___   __    _  _______  __   __ ");
-        sb.AppendLine("|   |    |   | |       ||  | |  ||   | |      |   |   |    |   _   ||  _    ||  | |  ||    _ |  |   | |  |  | ||       ||  | |  |");
-        sb.AppendLine("|   |    |   | |   _   ||  | |  ||   | |  _    |  |   |    |  |_|  || |_|   ||  |_|  ||   | ||  |   | |   |_| ||_     _||  |_|  |");
-        sb.AppendLine("|   |    |   | |  | |  ||  |_|  ||   | | | |   |  |   |    |       ||       ||       ||   |_||_ |   | |       |  |   |  |       |");
-        sb.AppendLine("|   |___ |   | |  |_|  ||       ||   | | |_|   |  |   |___ |       ||  _   | |_     _||    __  ||   | |  _    |  |   |  |       |");
-        sb.AppendLine("|       ||   | |      | |       ||   | |       |  |       ||   _   || |_|   |  |   |  |   |  | ||   | | | |   |  |   |  |   _   |");
-        sb.AppendLine("|_______||___| |____||_||_______||___| |______|   |_______||__| |__||_______|  |___|  |___|  |_||___| |_|  |__|  |___|  |__| |__|");
+        sb.AppendLine("  [-]  ");
+        sb.AppendLine(".-'-'-.");
+        sb.AppendLine(":-...-:");
+        sb.AppendLine("|;:   |");
+        sb.AppendLine("|;:.._|");
+        sb.AppendLine("`-...-' Liquid Labyrinth Loaded!");
         Logger.LogWarning(sb.ToString());
 
 
         OtherUtils.GenerateLayerMap();
         Harmony.PatchAll(typeof(GameNetworkManagerPatch));
         Harmony.PatchAll(typeof(PlayerControllerBPatch));
-        //Harmony.PatchAll(typeof(TerminalPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", true, "if enemies can pick up objects made by the mod");
-        UseSillyNames = Config.Bind("Fun", "Use Silly Names", false, "Silly overlaod");
-        SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[used for development] all registered items will become available to store.");
-        BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity");
+        SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[host only] all registered items will become available to store.");
+        BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity [Needs game restart.]");
         spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] revive has a chance to spawn enemy, let all enemies be spawned.");
+        UseCustomNameList = Config.Bind("Fun", "Use Custom Name List", false, "Set to true if you wan't to use your custom name list for bottles.");
+        customNameList = Config.Bind("Fun", "Custom Bottle Name List", "", "Custom name list of your bottles. use (\",\") as a seperator.");
+        customNameList.Value = "";
         SliderValue = BottleRarity.Value;
-
         foreach (var name in scientificNames)
         {
             MarkovChain.TrainMarkovChain(name);
@@ -201,7 +202,7 @@ internal class Plugin : BaseUnityPlugin
                         Text = spawnRandomEnemy.Description.Description,
                         OnValueChanged = (self, value) => spawnRandomEnemy.Value = value
                     },
-                    new VerticalComponent
+                    new HorizontalComponent
                     {
                         Children = new MenuComponent[]
                         {
@@ -214,6 +215,40 @@ internal class Plugin : BaseUnityPlugin
                                 Value = BottleRarity.Value,
                                 ShowValue = true,
                                 OnValueChanged = (self, value) => BottleRarity.Value = (int)value
+                            }
+                        }
+                    },
+                    new ToggleComponent
+                    {
+                        Value = UseCustomNameList.Value,
+                        Text = UseCustomNameList.Description.Description,
+                        OnValueChanged = (self, value) => UseCustomNameList.Value = value
+                    },
+                    new HorizontalComponent
+                    {
+                        ChildAlignment = TextAnchor.MiddleCenter,
+                        Children = new MenuComponent[]
+                        {
+                            new InputComponent
+                            {
+                                Placeholder=customNameList.Value + "[currently doesn't work]",
+                                Value=customNameList.Value,
+                                OnValueChanged = (self, value) => nameList = value
+                            },
+                            new ButtonComponent
+                            {
+                                Text = "Add Custom Name",
+                                OnClick = (self) => customNameList.Value += $",{nameList}" // this might break thiingsssss
+                            }
+                        }
+                    },
+                    new VerticalComponent
+                    {
+                        Children = new MenuComponent[]
+                        {
+                            new LabelComponent
+                            {
+                                Text=string.Join("\n",customNameList.Value.Split(","))
                             }
                         }
                     }

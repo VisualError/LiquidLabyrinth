@@ -1,10 +1,33 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 namespace LiquidLabyrinth.Utilities;
 
 internal class OtherUtils
 {
+    static List<string> ConvertToMixedCase(List<string> inputList)
+    {
+        List<string> resultList = new List<string>();
+
+        foreach (var input in inputList)
+        {
+            resultList.Add(ToMixedCase(input));
+        }
+
+        return resultList;
+    }
+
+    static string ToMixedCase(string input)
+    {
+        TextInfo textInfo = new CultureInfo("en-US", false).TextInfo;
+
+        // Capitalize the first letter of each word using ToTitleCase
+        string result = textInfo.ToTitleCase(input);
+
+        return result;
+    }
+
     private static Dictionary<int, int> _masksByLayer;
 
     internal static bool TryDestroyRigidBody(GameObject gameObject)

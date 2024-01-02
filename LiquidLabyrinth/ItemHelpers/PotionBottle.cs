@@ -68,7 +68,7 @@ class PotionBottle : Throwable
     [Header("Liquid Properties")]
     public bool BreakBottle = false;
     private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<FixedString32Bytes> net_Name = new NetworkVariable<FixedString32Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<FixedString128Bytes> net_Name = new NetworkVariable<FixedString128Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -255,11 +255,11 @@ class PotionBottle : Throwable
             {
                 if (nodeProperties.headerText == "BottleType")
                 {
-                    nodeProperties.headerText = MarkovChain.GenerateText(UnityEngine.Random.Range(3,20));
+                    nodeProperties.headerText = MarkovChain.GenerateText(UnityEngine.Random.Range(3,14), 128);
                     Plugin.Logger.LogWarning("generating random name");
                 }
                 bottleType = nodeProperties.headerText;
-                net_Name.Value = new FixedString32Bytes(nodeProperties.headerText);
+                net_Name.Value = new FixedString128Bytes(nodeProperties.headerText);
                 nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
             }
             int NameHash = Math.Abs(nodeProperties.headerText.GetHashCode());

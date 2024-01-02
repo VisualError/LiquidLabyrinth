@@ -21,6 +21,8 @@ class StartOfRoundPatch
                 Plugin.Logger.LogWarning($"Added enemy to list: {type.enemyName}");
             }
         }
+        Plugin.Instance.bottleItemList.Clear();
+        Plugin.Instance.headItemList.Clear();
     }
 
     [HarmonyPatch(nameof(StartOfRound.Awake))]
