@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## Version [0.0.3]
+
+### Fixed
+- Latest LethalSettings version should now work with the mod.
+
 ## Version [0.0.2]
 
 ### Added

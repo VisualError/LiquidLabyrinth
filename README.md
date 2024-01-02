@@ -14,7 +14,7 @@
 - Newly added dungeons
 - Tools to inspect and change liquid properties
 - Locally named liquids for clients
-
+[FULL CHANGELOG](https://github.com/VisualError/LiquidLabyrinth/blob/main/CHANGELOG.md)
 ## Installation
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/lethal-company/p/BepInEx/BepInExPack/) installed.
