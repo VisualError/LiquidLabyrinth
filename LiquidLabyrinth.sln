@@ -1,0 +1,16 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{5d471bfc-90b3-4c7b-8906-93ccb9afa1ca}") = "LiquidLabyrinth", "LiquidLabyrinth\LiquidLabyrinth.csproj", "{54d963ec-d81d-496c-bf23-98c1e8d65844}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{54d963ec-d81d-496c-bf23-98c1e8d65844}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{54d963ec-d81d-496c-bf23-98c1e8d65844}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{54d963ec-d81d-496c-bf23-98c1e8d65844}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{54d963ec-d81d-496c-bf23-98c1e8d65844}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
