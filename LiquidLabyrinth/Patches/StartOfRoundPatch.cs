@@ -1,4 +1,6 @@
-﻿using HarmonyLib;
+﻿using BepInEx;
+using HarmonyLib;
+using LiquidLabyrinth.Utilities;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -21,20 +23,34 @@ class StartOfRoundPatch
                 Plugin.Logger.LogWarning($"Added enemy to list: {type.enemyName}");
             }
         }
-        Plugin.Instance.bottleItemList.Clear();
-        Plugin.Instance.headItemList.Clear();
+
+        bool isHost = (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost);
+        if (!isHost)
+        {
+            RemoveShopItems();
+            return;
+        }
+        if (!Plugin.Instance.SetAsShopItems.Value)
+        {
+            RemoveShopItems();
+        }
     }
 
     [HarmonyPatch(nameof(StartOfRound.Awake))]
     [HarmonyPrefix]
     static void AwakePrefix()
     {
-        if (Plugin.Instance.SetAsShopItems.Value || !(NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) 
+        Plugin.Instance.bottleItemList.Clear();
+        Plugin.Instance.headItemList.Clear();
+        Plugin.Instance.SaveableItemDict.Clear();
+    }
+
+    private static void RemoveShopItems()
+    {
+        foreach (Item item in AssetLoader.items)
         {
-            foreach(LethalLib.Modules.Items.ShopItem shopItem in LethalLib.Modules.Items.shopItems)
-            {
-                LethalLib.Modules.Items.RemoveShopItem(shopItem.item);
-            }
+            LethalLib.Modules.Items.RemoveShopItem(item);
+            Plugin.Logger.LogWarning($"Removing shop item: {item}");
         }
     }
 }

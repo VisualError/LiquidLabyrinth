@@ -12,6 +12,7 @@ using System.Text;
 using UnityEngine;
 using LiquidLabyrinth.ItemHelpers;
 using System.Globalization;
+using System;
 
 namespace LiquidLabyrinth;
 
@@ -34,7 +35,7 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<string> customNameList;
     internal Dictionary<string, EnemyType> enemyTypes = new();
 
-    internal Dictionary<object, int> SaveableItemDict = new();
+    internal Dictionary<Type, int> SaveableItemDict = new();
     internal int SliderValue;
     private readonly Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
     string nameList = "";
@@ -140,10 +141,10 @@ internal class Plugin : BaseUnityPlugin
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
-        IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", true, "if enemies can pick up objects made by the mod");
+        IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
         SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[host only] all registered items will become available to store.");
         BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity [Needs game restart.]");
-        spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] Allow all enemy types to be spawned instead of just the masked when revive fails.");
+        spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] Allow all enemy types to be spawned when revive fail");
         UseCustomNameList = Config.Bind("Fun", "Use Custom Name List", false, "Set to true if you wan't to use your custom name list for bottles.");
         customNameList = Config.Bind("Fun", "Custom Bottle Name List", "", "Custom name list of your bottles. use (\",\") as a seperator.");
         customNameList.Value = "";
@@ -189,11 +190,12 @@ internal class Plugin : BaseUnityPlugin
                         OnValueChanged = (self, value) =>
                         {
                             SetAsShopItems.Value = value;
+                            Logger.LogWarning($"set value: {SetAsShopItems.Value}");
                         }
                     },
                     new ToggleComponent
                     {
-                        Value = spawnRandomEnemy.Value,
+                        Value = spawnRandomEnemy.Value, 
                         Text = spawnRandomEnemy.Description.Description,
                         OnValueChanged = (self, value) => spawnRandomEnemy.Value = value
                     },
