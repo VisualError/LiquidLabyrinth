@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## Version [v0.0.6-v0.0.7]
+### Fixed
+- Fixed RPC Error from head item
+- Position syncing issues
+- 
+
+### Changed
+- Lowered Spawn rates
+- Changed liquid material.
+- Head texture should now have a bottom texture.
+
+### Added
+- Added shake to make bottle liquid glow
+- Liquids should now float and glow when listening to boomboxes
+
 ## Version [0.0.5]
 ### Fixed
 - Somewhat fixed enemy pickups

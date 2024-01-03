@@ -8,16 +8,18 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices.ComTypes;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using static UnityEngine.ParticleSystem.PlaybackState;
+using Vector3 = UnityEngine.Vector3;
 
 namespace LiquidLabyrinth.ItemHelpers;
-class PotionBottle : Throwable
+class PotionBottle : Throwable, INoiseListener
 {
-    private Dictionary<int, string> data = null;
-    private Renderer rend;
+    private Renderer? rend;
     [Header("Wobble Settings")]
     Vector3 lastPos;
     Vector3 velocity;
@@ -32,6 +34,7 @@ class PotionBottle : Throwable
     float wobbleAmountZ;
     float wobbleAmountToAddX;
     float wobbleAmountToAddZ;
+    float maxEmission = 10f;
     float pulse;
     float time = 0.5f;
 
@@ -54,6 +57,8 @@ class PotionBottle : Throwable
     [Space(3f)]
     [Header("Liquid Properties")]
     public bool BreakBottle = false;
+    public bool IsShaking = false;
+    private NetworkVariable<float> net_emission = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString128Bytes> net_Name = new NetworkVariable<FixedString128Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -63,6 +68,7 @@ class PotionBottle : Throwable
     private NetworkVariable<Color> net_lighterColor = new NetworkVariable<Color>(Color.blue, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<BottleModes> net_mode = new NetworkVariable<BottleModes>(BottleModes.Open, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private int _BottleModesLength = Enum.GetValues(typeof(BottleModes)).Length;
+    private Light light;
     public string GetModeString(BottleModes mode, bool isOpened)
     {
         if (mode == BottleModes.Open && isOpened)
@@ -126,6 +132,7 @@ class PotionBottle : Throwable
                 {
                     itemAudio.PlayOneShot(closeCorkSFX);
                     RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 1, false, 0);
+                    
                 }
                 // Do this last to not cause any network issues lmao.
                 if (IsOwner)
@@ -150,6 +157,7 @@ class PotionBottle : Throwable
                 ToastCoroutine = StartCoroutine(Toast());
                 break;
             case BottleModes.Shake:
+                IsShaking = buttonDown;
                 if (!buttonDown) break;
                 CoroutineHandler.Instance.NewCoroutine<PotionBottle>(ShakeBottle());
                 break;
@@ -235,6 +243,7 @@ class PotionBottle : Throwable
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+        light = GetComponentInChildren<Light>();
         floatWhileOrbiting = true;
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
         if (IsHost || IsServer)
@@ -283,11 +292,12 @@ class PotionBottle : Throwable
         if (Liquid != null)
         {
             rend = Liquid.GetComponent<MeshRenderer>();
-            rend.material.SetFloat("_emission", 0.4f);
+            rend.material.SetFloat("_Emission", net_emission.Value);
             rend.material.SetColor("_LiquidColor", net_color.Value);
             rend.material.SetColor("_SurfaceColor", net_lighterColor.Value);
             rend.material.SetFloat("_Fill", net_Fill.Value);
         }
+        light.color = net_color.Value;
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -413,7 +423,7 @@ class PotionBottle : Throwable
         plr.deadBody.DeactivateBody(false);
     }
 
-    public override void OnCollisionEnter(Collision collision)
+    public override void OnCollisionEnter(UnityEngine.Collision collision)
     {
         LMBToThrow = false;
         if (rb.isKinematic) return;
@@ -442,13 +452,37 @@ class PotionBottle : Throwable
             HUDManager.Instance.ChangeControlTipMultiple(allLines, true, itemProperties);
         }
     }
-
+    float elapsedTime = 0.0f; // time elapsed since the decay started
+    float shakeTime = 0.0f; // time elapsed since the decay started
     public override void Update()
     {
         base.Update();
+        if(Vector3.Distance(lastNoisePosition, transform.position) > 4.2f && IsServer)
+        {
+            net_isFloating.Value = false;
+        }
+        float lerpFactor = 0.2f * Time.deltaTime;
+        rend.material.SetFloat("_Emission", net_emission.Value);
         rend.material.SetFloat("_Fill", net_Fill.Value);
+        light.intensity = net_emission.Value;
         if (itemUsedUp) return;
-
+        if ((IsShaking || net_isFloating.Value) && IsOwner)
+        {
+            net_emission.Value = Mathf.Lerp(net_emission.Value, maxEmission, lerpFactor);
+            shakeTime += Time.deltaTime; // increment the elapsed time
+        }
+        else if (net_emission.Value > 0.001f)
+        {
+            float t = elapsedTime / shakeTime; // calculate the interpolation factor
+            net_emission.Value = Mathf.Lerp(net_emission.Value, 0, t); // interpolate between start and end values
+            elapsedTime += Time.deltaTime; // increment the elapsed time
+        }
+        else
+        {
+            net_emission.Value = 0f;
+            elapsedTime = 0f;
+            elapsedTime = 0f;
+        } // i suck at maths btw.
         MaxWobble = net_Fill.Value * 0.2f;
         if (IsOwner && playerHeldBy != null && net_mode.Value == BottleModes.Drink && Holding && net_isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
         {
@@ -496,5 +530,31 @@ class PotionBottle : Throwable
         // keep last position
         lastPos = transform.position;
         lastRot = transform.rotation.eulerAngles;
+    }
+
+    // lmao.
+    Vector3 lastNoisePosition;
+    public void DetectNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot, int noiseID)
+    {
+        if (!(IsHost || IsServer)) return;
+        Vector3 force = Vector3.up * 0.2f;
+        float distance = Vector3.Distance(noisePosition, transform.position);
+        if (noiseID != 5) return;
+        if (distance > 3.2f)
+        {
+            force = Vector3.down * 0.2f;
+        }
+        if (distance < 3.8f)
+        {
+            force = Vector3.down * 0.2f;
+        }
+        if (distance > 4.2f)
+        {
+            net_isFloating.Value = false;
+            return;
+        }
+        lastNoisePosition = noisePosition;
+        net_isFloating.Value = true;
+        rb.AddForce(force, ForceMode.VelocityChange);
     }
 }

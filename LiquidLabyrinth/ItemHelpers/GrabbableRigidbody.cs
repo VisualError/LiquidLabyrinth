@@ -23,6 +23,7 @@ class GrabbableRigidbody : SaveableItem
     public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<bool> net_Placed = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    public NetworkVariable<bool> net_isFloating = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public bool floatWhileOrbiting;
     public float gravity = 9.8f;
     internal Rigidbody rb;
@@ -33,7 +34,7 @@ class GrabbableRigidbody : SaveableItem
         OnStart?.Invoke();
         rb = GetComponent<Rigidbody>();
         itemAudio = GetComponent<AudioSource>();
-        if (rb == null || itemAudio == null) { Start(); return; }
+        if (rb == null || itemAudio == null) return;
         rb.useGravity = false;
         rb.mass = itemMass;
         // force some properties which might be missconfigured
@@ -74,7 +75,7 @@ class GrabbableRigidbody : SaveableItem
         // handle gravity if rigidbody is enabled
         if (IsHost || IsServer)
         {
-            if (floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
+            if (floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value || net_isFloating.Value)
             {
                 rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
                 return;
@@ -141,7 +142,7 @@ class GrabbableRigidbody : SaveableItem
     [ClientRpc]
     public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
     {
-        if (rb.isKinematic) return;
+        if (rb == null || rb.isKinematic) return;
         OnCollision?.Invoke();
         if (itemAudio == null)
         {

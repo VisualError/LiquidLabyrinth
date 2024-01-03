@@ -139,6 +139,7 @@ internal class Plugin : BaseUnityPlugin
         Harmony.PatchAll(typeof(PlayerControllerBPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
         Harmony.PatchAll(typeof(GrabbableObjectPatch));
+        Harmony.PatchAll(typeof(INoiseListenerWorkaround));
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
