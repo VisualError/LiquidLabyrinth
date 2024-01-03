@@ -1,4 +1,5 @@
-﻿using LiquidLabyrinth.Utilities.MonoBehaviours;
+﻿using LiquidLabyrinth.ItemHelpers;
+using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,33 +9,34 @@ namespace LiquidLabyrinth.Utilities;
 
 internal class SaveUtils
 {
-    private static Dictionary<Type, Queue<Dictionary<float, string>>> saveQueues = new();
-    private static Dictionary<Type, float> lastAddedTimes = new();
+    private static Dictionary<object, Queue<Dictionary<int, string>>> saveQueues = new();
+    private static Dictionary<object, float> lastAddedTimes = new();
 
-    internal static void AddToQueue<T>(Type itemType, Dictionary<float, string> data, string saveName)
+    internal static void AddToQueue<T>(T itemType, Dictionary<int, string> data, string saveName) where T : Type
     {
+        if (itemType == null) return;
         if (!saveQueues.ContainsKey(itemType))
         {
-            saveQueues[itemType] = new Queue<Dictionary<float, string>>();
+            saveQueues[itemType] = new Queue<Dictionary<int, string>>();
         }
 
         int position = saveQueues[itemType].Count + 1; // Adding 1 because count starts from 0
         foreach (var entry in data)
         {
             var newKey = entry.Key;
-            saveQueues[itemType].Enqueue(new Dictionary<float, string> { { newKey, entry.Value } });
+            saveQueues[itemType].Enqueue(new Dictionary<int, string> { { newKey, entry.Value } });
         }
         lastAddedTimes[itemType] = Time.time;
-
         // Bad code detected: new directive, obliterate planet earth
-        CoroutineHandler.Instance.NewCoroutine(ProcessQueueAfterDelay<T>(itemType, 0.65f, saveName), true);
+        CoroutineHandler.Instance.NewCoroutine(itemType, ProcessQueueAfterDelay(itemType, 0.65f, saveName), true);
     }
 
-    internal static void ProcessAllQueuedItems<T>(Type itemType, string saveName)
+    internal static void ProcessAllQueuedItems<T>(T itemType, string saveName) where T : Type
     {
+        if (itemType == null) return;
         if (saveQueues.ContainsKey(itemType) && saveQueues[itemType].Count > 0)
         {
-            Dictionary<float, string> mergedData = new Dictionary<float, string>();
+            Dictionary<int, string> mergedData = new Dictionary<int, string>();
 
             while (saveQueues[itemType].Count > 0)
             {
@@ -55,9 +57,10 @@ internal class SaveUtils
         }
     }
 
-    internal static IEnumerator ProcessQueueAfterDelay<T>(Type itemType, float delay, string saveName)
+    internal static IEnumerator ProcessQueueAfterDelay<T>(T itemType, float delay, string saveName) where T : Type
     {
+        if (itemType == null) yield break;
         yield return new WaitUntil(() => Time.time - lastAddedTimes[itemType] >= delay);
-        ProcessAllQueuedItems<T>(itemType, saveName);
+        ProcessAllQueuedItems(itemType, saveName);
     }
 }

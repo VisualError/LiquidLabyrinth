@@ -10,7 +10,7 @@ namespace LiquidLabyrinth.Utilities;
 internal class AssetLoader
 {
     internal static Dictionary<string, Object> assetsDictionary = new Dictionary<string, Object>();
-
+    internal static List<Item> items = new List<Item>();
     internal static void LoadAssetBundles()
     {
         var bundle = AssetBundle.LoadFromMemory(Properties.Resources.liquidlabyrinth);
@@ -33,15 +33,15 @@ internal class AssetLoader
             {
                 LethalLib.Modules.Items.RegisterShopItem(item, -1);
                 Plugin.Logger.LogWarning($"Added Shop Item: {assetName}");
-                int rarity = item.GetType() != typeof(PotionBottle) ? 60 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
+                int rarity = item.GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
                 LethalLib.Modules.Items.RegisterScrap(item, rarity, LethalLib.Modules.Levels.LevelTypes.All);
                 Plugin.Logger.LogWarning($"Added Scrap Item: {assetName}");
-
                 if (item.spawnPrefab.TryGetComponent(out NetworkObject obj) && obj != null)
                 {
                     LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(item.spawnPrefab);
                     Plugin.Logger.LogWarning($"NetworkPrefab for {assetName} loaded!");
                 }
+                if (!items.Contains(item)) items.Add(item);
             }
         }
     }

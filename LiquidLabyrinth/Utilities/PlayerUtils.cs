@@ -10,7 +10,7 @@ internal class PlayerUtils
 
 	internal static void RotateToObject(PlayerControllerB player, GameObject targetObject)
 	{
-		CoroutineHandler.Instance.NewCoroutine(RotateToObjectCoroutine(player, targetObject), true);
+		CoroutineHandler.Instance.NewCoroutine(typeof(PlayerUtils), RotateToObjectCoroutine(player, targetObject), true);
 		//Vector3 directionToTarget = targetObject.transform.position - player.transform.position;
 		//Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
 		//player.transform.LookAt(targetObject.transform);

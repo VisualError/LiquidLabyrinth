@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## Version [0.0.5]
+### Fixed
+- Somewhat fixed enemy pickups
+- Saves (again)
+- Placing items
+- Shop config not working
+- Selling the head item now gives you at least two credits
+
+### Added
+- Enemies can now detect sounds made by the bottle `be careful~
+- Probaby added more bugs.
+
 ## Version [0.0.4]
 ### Added
 - Added Spawn random enemy on revive functionality on config.

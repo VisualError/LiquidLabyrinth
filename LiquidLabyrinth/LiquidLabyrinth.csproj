@@ -71,10 +71,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Resources\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="..\..\..\..\Downloads\icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
@@ -83,6 +79,12 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Unity.Netcode.Components">
+      <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Components.dll</HintPath>
+    </Reference>
   </ItemGroup>
   
   <Target Name="EnsureLibDir">

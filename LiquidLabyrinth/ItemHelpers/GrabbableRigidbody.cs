@@ -2,13 +2,14 @@
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
+using System;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
 [RequireComponent(typeof(Rigidbody))]
 
 // Taken from: https://gist.github.com/EvaisaDev/aaf727b2aeb6733793c89a887f8f8615
-class GrabbableRigidbody : GrabbableObject
+class GrabbableRigidbody : SaveableItem
 {
 
     // EVENTS:
@@ -19,37 +20,29 @@ class GrabbableRigidbody : GrabbableObject
     public UnityEvent OnCollision = new UnityEvent();
     public UnityEvent OnInteractLocal = new UnityEvent();
     public UnityEvent OnInteractGlobal = new UnityEvent();
+    public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<bool> net_Placed = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public bool floatWhileOrbiting;
     public float gravity = 9.8f;
     internal Rigidbody rb;
-    public AudioSource itemAudio;
+    internal AudioSource itemAudio;
     public float itemMass = 1f;
     public override void Start()
     {
         OnStart?.Invoke();
         rb = GetComponent<Rigidbody>();
+        itemAudio = GetComponent<AudioSource>();
+        if (rb == null || itemAudio == null) { Start(); return; }
         rb.useGravity = false;
         rb.mass = itemMass;
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
         base.Start();
-        EnablePhysics(true);
+        //EnablePhysics(true);
     }
 
-    public new void EnablePhysics(bool enable)
-    {
-        for (int i = 0; i < propColliders.Length; i++)
-        {
-            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
-            {
-                propColliders[i].enabled = enable;
-            }
-        }
-
-        // enable rigidbody
-        rb.isKinematic = !enable;
-    }
+    internal Vector3 oldEnemyPosition;
 
     public override void Update()
     {
@@ -64,13 +57,24 @@ class GrabbableRigidbody : GrabbableObject
         isHeld = wasHeld;
     }
 
+    public void EnableColliders(bool enable)
+    {
+        for (int i = 0; i < propColliders.Length; i++)
+        {
+            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
+            {
+                propColliders[i].enabled = enable;
+            }
+        }
+    }
+
 
     public virtual void FixedUpdate()
     {
         // handle gravity if rigidbody is enabled
         if (IsHost || IsServer)
         {
-            if(floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
+            if (floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
             {
                 rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
                 return;
@@ -78,7 +82,7 @@ class GrabbableRigidbody : GrabbableObject
             if (!rb.isKinematic && !isHeld)
             {
                 rb.useGravity = false;
-                rb.AddForce(Vector3.down * gravity * rb.mass, ForceMode.Acceleration);
+                rb.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
             }
             else
             {
@@ -89,10 +93,12 @@ class GrabbableRigidbody : GrabbableObject
 
     public override void LateUpdate()
     {
-        if (parentObject != null && isHeld)
+        if (parentObject != null && (isHeld||isHeldByEnemy))
         {
             transform.rotation = parentObject.rotation;
-            transform.Rotate(itemProperties.rotationOffset);
+            Vector3 rotationOffset = itemProperties.rotationOffset;
+            if (isHeldByEnemy) rotationOffset = rotationOffset + new Vector3(0,90,0);
+            transform.Rotate(rotationOffset);
             transform.position = parentObject.position;
             Vector3 positionOffset = itemProperties.positionOffset;
             positionOffset = parentObject.rotation * positionOffset;
@@ -135,6 +141,7 @@ class GrabbableRigidbody : GrabbableObject
     [ClientRpc]
     public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
     {
+        if (rb.isKinematic) return;
         OnCollision?.Invoke();
         if (itemAudio == null)
         {
@@ -147,30 +154,40 @@ class GrabbableRigidbody : GrabbableObject
         }
         float pitch = OtherUtils.mapValue(rigidBodyMagnitude, 0.8f, 10f, 0.8f, 1.5f);
         itemAudio.pitch = pitch;
-        itemAudio.PlayOneShot(itemProperties.dropSFX);
+        PlayDropSFX();
     }
 
     public override void EquipItem()
     {
-        // remove parent object
         OnEquipItem?.Invoke();
         base.EquipItem();
         itemAudio.pitch = 1f;
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-        }
-        EnablePhysics(false);
+        //set parent to null
         transform.parent = null;
+        if (IsOwner) net_Placed.Value = false;
+    }
+
+    public override void GrabItemFromEnemy(EnemyAI enemy)
+    {
+        base.GrabItemFromEnemy(enemy);
+        isHeldByEnemy = true;
+        itemAudio.pitch = 1f;
+        //set parent to null and currentEnemyHeld to the enemy.
+        enemyCurrentlyHeld = enemy;
+        transform.parent = null;
+    }
+
+    public override void DiscardItemFromEnemy()
+    {
+        base.DiscardItemFromEnemy();
+        Plugin.Logger.LogWarning($"drop called by enemy {enemyCurrentlyHeld.name}");
+        isHeldByEnemy = false;
+        enemyCurrentlyHeld = null;
     }
 
     public override void DiscardItem()
     {
         OnDiscardItem?.Invoke();
-        if (rb != null)
-        {
-            rb.isKinematic = false;
-        }
         base.DiscardItem();
     }
 
@@ -187,7 +204,7 @@ class GrabbableRigidbody : GrabbableObject
         // stub, we do not need this.
     }
 
-    public void FallToGround()
+    public new void FallToGround(bool randomizePosition = false)
     {
         // stub, we do not need this.
     }
