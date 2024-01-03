@@ -71,10 +71,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Resources\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Include="..\..\..\..\Downloads\icon.png">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>

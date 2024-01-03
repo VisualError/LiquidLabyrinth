@@ -38,11 +38,12 @@ class StartOfRoundPatch
 
     [HarmonyPatch(nameof(StartOfRound.Awake))]
     [HarmonyPrefix]
-    static void AwakePrefix()
+    static bool AwakePrefix()
     {
         Plugin.Instance.bottleItemList.Clear();
         Plugin.Instance.headItemList.Clear();
         Plugin.Instance.SaveableItemDict.Clear();
+        return true;
     }
 
     private static void RemoveShopItems()

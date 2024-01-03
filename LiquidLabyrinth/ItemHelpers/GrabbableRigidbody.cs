@@ -20,6 +20,7 @@ class GrabbableRigidbody : SaveableItem
     public UnityEvent OnCollision = new UnityEvent();
     public UnityEvent OnInteractLocal = new UnityEvent();
     public UnityEvent OnInteractGlobal = new UnityEvent();
+    public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public bool floatWhileOrbiting;
     public float gravity = 9.8f;
@@ -39,19 +40,7 @@ class GrabbableRigidbody : SaveableItem
         EnablePhysics(true);
     }
 
-    public new void EnablePhysics(bool enable)
-    {
-        for (int i = 0; i < propColliders.Length; i++)
-        {
-            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
-            {
-                propColliders[i].enabled = enable;
-            }
-        }
-
-        // enable rigidbody
-        rb.isKinematic = !enable;
-    }
+    internal Vector3 oldEnemyPosition;
 
     public override void Update()
     {
@@ -60,13 +49,10 @@ class GrabbableRigidbody : SaveableItem
         fallTime = 1.0f;
         reachedFloorTarget = true;
         var wasHeld = isHeld;
-        var wasHeldByEnemy = isHeldByEnemy;
         // hella hax
         isHeld = true;
-        isHeldByEnemy = true;
         base.Update();
         isHeld = wasHeld;
-        isHeldByEnemy = wasHeldByEnemy;
     }
 
 
@@ -75,7 +61,7 @@ class GrabbableRigidbody : SaveableItem
         // handle gravity if rigidbody is enabled
         if (IsHost || IsServer)
         {
-            if(floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
+            if (floatWhileOrbiting && StartOfRound.Instance.inShipPhase && !rb.isKinematic && Plugin.Instance.NoGravityInOrbit.Value)
             {
                 rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
                 return;
@@ -83,13 +69,27 @@ class GrabbableRigidbody : SaveableItem
             if (!rb.isKinematic && !isHeld)
             {
                 rb.useGravity = false;
-                rb.AddForce(Vector3.down * gravity * rb.mass, ForceMode.Acceleration);
+                rb.AddForce(Vector3.down * gravity, ForceMode.Acceleration);
             }
             else
             {
                 rb.AddForce(Vector3.zero, ForceMode.VelocityChange);
             }
         }
+    }
+
+    public new void EnablePhysics(bool enable)
+    {
+        Plugin.Logger.LogWarning("replaced physics called");
+        for (int i = 0; i < propColliders.Length; i++)
+        {
+            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
+            {
+                propColliders[i].enabled = enable;
+            }
+        }
+        // enable rigidbody
+        rb.isKinematic = !enable;
     }
 
     public override void LateUpdate()
@@ -160,12 +160,7 @@ class GrabbableRigidbody : SaveableItem
         OnEquipItem?.Invoke();
         base.EquipItem();
         itemAudio.pitch = 1f;
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-        }
-        EnablePhysics(false);
-        // remove parent object
+        //set parent to null
         transform.parent = null;
     }
 
@@ -174,24 +169,17 @@ class GrabbableRigidbody : SaveableItem
         base.GrabItemFromEnemy(enemy);
         isHeldByEnemy = true;
         itemAudio.pitch = 1f;
-        if (rb != null)
-        {
-            rb.isKinematic = true;
-        }
-        EnablePhysics(false);
-        // remove parent object 
+        //set parent to null and currentEnemyHeld to the enemy.
+        enemyCurrentlyHeld = enemy;
         transform.parent = null;
-
     }
 
     public override void DiscardItemFromEnemy()
     {
-        if (rb != null)
-        {
-            rb.isKinematic = false;
-        }
         base.DiscardItemFromEnemy();
+        Plugin.Logger.LogWarning($"drop called by enemy {enemyCurrentlyHeld.name}");
         isHeldByEnemy = false;
+        enemyCurrentlyHeld = null;
     }
 
     public override void DiscardItem()
@@ -217,7 +205,7 @@ class GrabbableRigidbody : SaveableItem
         // stub, we do not need this.
     }
 
-    public void FallToGround()
+    public new void FallToGround(bool randomizePosition = false)
     {
         // stub, we do not need this.
     }

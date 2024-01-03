@@ -123,15 +123,16 @@ internal class Plugin : BaseUnityPlugin
         Instance = this;
         Logger = base.Logger;
         NetcodeWeaver();
-        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded.");
+        Logger.LogInfo($"Plugin {MyPluginInfo.PLUGIN_GUID} is loaded!");
         StringBuilder sb = new();
         sb.AppendLine();
-        sb.AppendLine("  [-]  ");
-        sb.AppendLine(".-'-'-.");
-        sb.AppendLine(":-...-:");
-        sb.AppendLine("|;:   |");
-        sb.AppendLine("|;:.._|");
-        sb.AppendLine("`-...-' Liquid Labyrinth Loaded!");
+        sb.AppendLine("           [-]  ");
+        sb.AppendLine("         .-'-'-.");
+        sb.AppendLine("         :-...-:");
+        sb.AppendLine("         |;:   |");
+        sb.AppendLine("         |;:.._|");
+        sb.AppendLine("         `-...-'");
+        sb.AppendLine(" Liquid Labyrinth Loaded!");
         Logger.LogWarning(sb.ToString());
 
 
