@@ -26,7 +26,7 @@ public class HeadItemData
 }
 class HeadItem : Throwable
 {
-    private Dictionary<float, string> data = null;
+    private Dictionary<int, string> data = null;
     private string _localtooltip;
     private string _localdescription;
     bool Equiped = false;
@@ -59,10 +59,10 @@ class HeadItem : Throwable
     {
         Plugin.Instance.headItemList.Add(this);
 
-        Dictionary<float, string> data = new Dictionary<float, string>();
+        Dictionary<int, string> data = new Dictionary<int, string>();
         HeadItemData obj = new (net_tooltip.Value.ToString(), net_description.Value.ToString());
         data.Add(Plugin.Instance.headItemList.Count, JsonUtility.ToJson(obj));
-        SaveUtils.AddToQueue<HeadItem>(GetType(), data, "shipHeadData");
+        SaveUtils.AddToQueue(GetType(), data, "shipHeadData");
         return Plugin.Instance.headItemList.Count;
     }
 
@@ -72,10 +72,10 @@ class HeadItem : Throwable
         if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
         if (ES3.KeyExists("shipHeadData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
         {
-            data = ES3.Load<Dictionary<float, string>>("shipHeadData", GameNetworkManager.Instance.currentSaveFileName);
+            data = ES3.Load<Dictionary<int, string>>("shipHeadData", GameNetworkManager.Instance.currentSaveFileName);
         }
         if (data == null) return;
-        float key = saveData;
+        int key = saveData;
         if (data.TryGetValue(key, out string value))
         {
             var scanNode = GetComponentInChildren<ScanNodeProperties>();

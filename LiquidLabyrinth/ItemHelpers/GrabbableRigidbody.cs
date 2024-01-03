@@ -8,7 +8,7 @@ namespace LiquidLabyrinth.ItemHelpers;
 [RequireComponent(typeof(Rigidbody))]
 
 // Taken from: https://gist.github.com/EvaisaDev/aaf727b2aeb6733793c89a887f8f8615
-class GrabbableRigidbody : GrabbableObject
+class GrabbableRigidbody : SaveableItem
 {
 
     // EVENTS:

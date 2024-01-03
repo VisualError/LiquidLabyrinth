@@ -33,6 +33,8 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> spawnRandomEnemy;
     internal ConfigEntry<string> customNameList;
     internal Dictionary<string, EnemyType> enemyTypes = new();
+
+    internal Dictionary<object, int> SaveableItemDict = new();
     internal int SliderValue;
     private readonly Harmony Harmony = new(MyPluginInfo.PLUGIN_GUID);
     string nameList = "";

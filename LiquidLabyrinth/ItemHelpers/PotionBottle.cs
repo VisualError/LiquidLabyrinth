@@ -29,7 +29,7 @@ public class BottleItemData
 }
 class PotionBottle : Throwable
 {
-    private Dictionary<float, string> data = null;
+    private Dictionary<int, string> data = null;
     private Renderer rend;
     [Header("Wobble Settings")]
     Vector3 lastPos;
@@ -307,10 +307,10 @@ class PotionBottle : Throwable
         if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
         if (ES3.KeyExists("shipBottleData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
         {
-            data = ES3.Load<Dictionary<float, string>>("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
+            data = ES3.Load<Dictionary<int, string>>("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
         }
         if (data == null) return;
-        float key = saveData;
+        int key = saveData;
         if (data.TryGetValue(key, out string value))
         {
             var dataObject = JsonUtility.FromJson<BottleItemData>(value);
@@ -332,11 +332,11 @@ class PotionBottle : Throwable
     public override int GetItemDataToSave()
     {
         Plugin.Instance.bottleItemList.Add(this);
-        Dictionary<float, string> data = new Dictionary<float, string>();
+        Dictionary<int, string> data = new Dictionary<int, string>();
         BottleItemData obj = new(net_Name.Value.ToString(), net_Fill.Value);
         data.Add(Plugin.Instance.bottleItemList.Count, JsonUtility.ToJson(obj));
         //data.Add(Plugin.Instance.bottleItemList.Count(), GetComponentInChildren<ScanNodeProperties>().headerText); //data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
-        SaveUtils.AddToQueue<PotionBottle>(GetType(), data, "shipBottleData");
+        SaveUtils.AddToQueue(GetType(), data, "shipBottleData");
         return Plugin.Instance.bottleItemList.Count;
     }
 
