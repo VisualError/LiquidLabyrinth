@@ -6,97 +6,70 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using BepInEx;
+using LiquidLabyrinth.ItemData;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
-[Serializable]
-public class HeadItemData
-{
-    public HeadItemData(string tip, string desc)
-    {
-        tooltip = tip;
-        description = desc;
-    }
-    public bool IsNullOrEmpty()
-    {
-        return string.IsNullOrEmpty(tooltip) && string.IsNullOrEmpty(description);
-    }
-    public string tooltip;
-    public string description;
-}
+
 class HeadItem : Throwable
 {
-    private Dictionary<float, string> data = null;
-    private string _localtooltip;
-    private string _localdescription;
+
+    private string? _localtooltip;
+    private string? _localdescription;
     bool Equiped = false;
     private NetworkVariable<FixedString32Bytes> net_tooltip = new NetworkVariable<FixedString32Bytes>("Head.", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString32Bytes> net_description = new NetworkVariable<FixedString32Bytes>("Unknown.", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+        Plugin.Logger.LogWarning("network called");
         var player = GetComponentInParent<DeadBodyInfo>(true);
         var scanNode = GetComponentInChildren<ScanNodeProperties>();
         if(IsServer || IsHost)
         {
-            if (!_localtooltip.IsNullOrWhiteSpace() && !_localdescription.IsNullOrWhiteSpace())
+            if (player != null && scanNode != null)
             {
+                Plugin.Logger.LogWarning("found player");
+                net_tooltip.Value = $"{player.playerScript.playerUsername}'s Head.";
+                net_description.Value = Enum.GetName(typeof(CauseOfDeath), player.causeOfDeath);
+            }
+            else
+            {
+                Plugin.Logger.LogWarning("Couldn't find Player");
+                if (_localtooltip.IsNullOrWhiteSpace() && _localdescription.IsNullOrWhiteSpace()) return;
                 net_tooltip.Value = $"{_localtooltip}";
                 net_description.Value = _localdescription;
             }
-            else if(player != null && scanNode != null)
-            {
-                net_tooltip.Value = $"{player.playerScript.playerUsername}'s Head.";
-                net_description.Value = Enum.GetName(typeof(CauseOfDeath), player.causeOfDeath);
-                customGrabTooltip = $"{net_tooltip.Value} [E]";
-                scanNode.headerText = $"{net_tooltip.Value}";
-                scanNode.subText = $"{net_description.Value}";
-            }
         }
+        customGrabTooltip = $"{net_tooltip.Value} [E]";
+        if (scanNode == null) return;
+        scanNode.headerText = $"{net_tooltip.Value}";
+        scanNode.subText = $"{net_description.Value}";
     }
 
     public override int GetItemDataToSave()
     {
-        Plugin.Instance.headItemList.Add(this);
-
-        Dictionary<float, string> data = new Dictionary<float, string>();
-        HeadItemData obj = new (net_tooltip.Value.ToString(), net_description.Value.ToString());
-        data.Add(Plugin.Instance.headItemList.Count, JsonUtility.ToJson(obj));
-        SaveUtils.AddToQueue<HeadItem>(GetType(), data, "shipHeadData");
-        return Plugin.Instance.headItemList.Count;
+        Data = new HeadItemData(net_tooltip.Value.ToString(), net_description.Value.ToString());
+        return base.GetItemDataToSave();
     }
 
     public override void LoadItemSaveData(int saveData)
     {
+        DataType = typeof(HeadItemData);
         base.LoadItemSaveData(saveData);
-        if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
-        if (ES3.KeyExists("shipHeadData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
+        if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server. (bottom part prob already wont run if youre client, but just incase)
+        if (Data is HeadItemData itemData && itemData != null)
         {
-            data = ES3.Load<Dictionary<float, string>>("shipHeadData", GameNetworkManager.Instance.currentSaveFileName);
+            _localtooltip = itemData.tooltip;
+            _localdescription = itemData.description;
         }
-        if (data == null) return;
-        float key = saveData;
-        if (data.TryGetValue(key, out string value))
-        {
-            var scanNode = GetComponentInChildren<ScanNodeProperties>();
-            var dataObject = JsonUtility.FromJson<HeadItemData>(value);
-            if (dataObject == null) return;
-            _localtooltip = dataObject.tooltip;
-            _localdescription = dataObject.description;
-            customGrabTooltip = $"{dataObject.tooltip} [E]";
-            scanNode.headerText = $"{dataObject.tooltip}";
-            scanNode.subText = $"{dataObject.description}";
-            Plugin.Logger.Log(BepInEx.Logging.LogLevel.All,$"Found data: {value} ({key})");
-        }
-        else
-        {
-            Plugin.Logger.Log(BepInEx.Logging.LogLevel.All,$"Couldn't find save data for {GetType().Name}. ({key}). Please send this log to the mod developer.");
-        }
+        // Using local variables because network object hasn't been spawned on the server yet. These values will be useful for OnNetworkSpawn
     }
 
     public override void Update()
     {
         base.Update();
+        if (!IsSpawned) return;
         PlayerControllerB localPlayerController = GameNetworkManager.Instance.localPlayerController;
         if (localPlayerController == null) return;
         float divided = localPlayerController.insanityLevel + 1f / localPlayerController.maxInsanityLevel + 1f;
