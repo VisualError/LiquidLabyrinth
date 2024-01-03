@@ -60,10 +60,13 @@ class GrabbableRigidbody : SaveableItem
         fallTime = 1.0f;
         reachedFloorTarget = true;
         var wasHeld = isHeld;
+        var wasHeldByEnemy = isHeldByEnemy;
         // hella hax
         isHeld = true;
+        isHeldByEnemy = true;
         base.Update();
         isHeld = wasHeld;
+        isHeldByEnemy = wasHeldByEnemy;
     }
 
 
@@ -91,7 +94,7 @@ class GrabbableRigidbody : SaveableItem
 
     public override void LateUpdate()
     {
-        if (parentObject != null && isHeld)
+        if (parentObject != null && (isHeld||isHeldByEnemy))
         {
             transform.rotation = parentObject.rotation;
             transform.Rotate(itemProperties.rotationOffset);
@@ -154,7 +157,6 @@ class GrabbableRigidbody : SaveableItem
 
     public override void EquipItem()
     {
-        // remove parent object
         OnEquipItem?.Invoke();
         base.EquipItem();
         itemAudio.pitch = 1f;
@@ -163,7 +165,33 @@ class GrabbableRigidbody : SaveableItem
             rb.isKinematic = true;
         }
         EnablePhysics(false);
+        // remove parent object
         transform.parent = null;
+    }
+
+    public override void GrabItemFromEnemy(EnemyAI enemy)
+    {
+        base.GrabItemFromEnemy(enemy);
+        isHeldByEnemy = true;
+        itemAudio.pitch = 1f;
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+        }
+        EnablePhysics(false);
+        // remove parent object 
+        transform.parent = null;
+
+    }
+
+    public override void DiscardItemFromEnemy()
+    {
+        if (rb != null)
+        {
+            rb.isKinematic = false;
+        }
+        base.DiscardItemFromEnemy();
+        isHeldByEnemy = false;
     }
 
     public override void DiscardItem()

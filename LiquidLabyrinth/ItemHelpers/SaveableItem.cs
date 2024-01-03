@@ -36,7 +36,8 @@ namespace LiquidLabyrinth.ItemHelpers
             if (dataObject == null)
             {
                 Plugin.Logger.LogWarning($"Object data was null/empty for {itemProperties.itemName}. Item save not loaded.");
-                // Create new data here
+                // Create new data here. (or just handle it in the item actually, might be more flexible)
+                Data = null;
                 return; // Don't return once you figure out how to populate the data from the constructor inheriting SaveableItem.
             }
             Plugin.Logger.Log(BepInEx.Logging.LogLevel.All,$"LoadItemSaveData called by {itemProperties.itemName}! Got: {saveData}");

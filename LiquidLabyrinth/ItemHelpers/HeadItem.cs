@@ -6,32 +6,16 @@ using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using BepInEx;
-using DunGen;
-using static UnityEngine.UIElements.StylePropertyAnimationSystem;
-using System.Runtime.Serialization;
+using LiquidLabyrinth.ItemData;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
-[Serializable]
-public class HeadItemData
-{
-    public HeadItemData(string tip, string desc)
-    {
-        tooltip = tip;
-        description = desc;
-    }
-    public bool IsNullOrEmpty()
-    {
-        return string.IsNullOrEmpty(tooltip) && string.IsNullOrEmpty(description);
-    }
-    public string tooltip;
-    public string description;
-}
+
 class HeadItem : Throwable
 {
 
-    private string _localtooltip;
-    private string _localdescription;
+    private string? _localtooltip;
+    private string? _localdescription;
     bool Equiped = false;
     private NetworkVariable<FixedString32Bytes> net_tooltip = new NetworkVariable<FixedString32Bytes>("Head.", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString32Bytes> net_description = new NetworkVariable<FixedString32Bytes>("Unknown.", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);

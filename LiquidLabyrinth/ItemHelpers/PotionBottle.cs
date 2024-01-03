@@ -1,32 +1,19 @@
-﻿using GameNetcodeStuff;
+﻿using DunGen;
+using GameNetcodeStuff;
 using LiquidLabyrinth.Enums;
+using LiquidLabyrinth.ItemData;
 using LiquidLabyrinth.Utilities;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
 namespace LiquidLabyrinth.ItemHelpers;
-
-[Serializable]
-public class BottleItemData
-{
-    public BottleItemData(string _name, float _fill)
-    {
-        name = _name ?? "BottleType";
-        fill = _fill != 0f ? _fill : UnityEngine.Random.Range(0f, 1f);
-    }
-    public bool IsNullOrEmpty()
-    {
-        return string.IsNullOrEmpty(this.name) && this.fill == 0f;
-    }
-    public string name;
-    public float fill;
-}
 class PotionBottle : Throwable
 {
     private Dictionary<int, string> data = null;
@@ -133,10 +120,12 @@ class PotionBottle : Throwable
                 if (!net_isOpened.Value)
                 {
                     itemAudio.PlayOneShot(openCorkSFX);
+                    RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
                 }
                 else
                 {
                     itemAudio.PlayOneShot(closeCorkSFX);
+                    RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 1, false, 0);
                 }
                 // Do this last to not cause any network issues lmao.
                 if (IsOwner)
@@ -184,6 +173,7 @@ class PotionBottle : Throwable
             float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
             AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
             itemAudio.PlayOneShot(subclip);
+            RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
             CoroutineHandler.Instance.NewCoroutine(itemAudio.FadeOut(1f));
             wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
             wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
@@ -302,42 +292,25 @@ class PotionBottle : Throwable
 
     public override void LoadItemSaveData(int saveData)
     {
+        DataType = typeof(BottleItemData);
         base.LoadItemSaveData(saveData);
-        Plugin.Logger.LogWarning($"LoadItemSaveData called! Got: {saveData}");
-        if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
-        if (ES3.KeyExists("shipBottleData", GameNetworkManager.Instance.currentSaveFileName) && data == null)
+        if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server. (bottom part prob already wont run if youre client, but just incase)
+        if (Data is BottleItemData itemData)
         {
-            data = ES3.Load<Dictionary<int, string>>("shipBottleData", GameNetworkManager.Instance.currentSaveFileName);
-        }
-        if (data == null) return;
-        int key = saveData;
-        if (data.TryGetValue(key, out string value))
-        {
-            var dataObject = JsonUtility.FromJson<BottleItemData>(value);
-            if (dataObject.IsNullOrEmpty())
-            {
-                Plugin.Logger.LogWarning($"Object data was null/empty for {itemProperties.itemName}");
-                dataObject = new("BottleType", 0f);
-            }
-            GetComponentInChildren<ScanNodeProperties>().headerText = dataObject.name;
-            _localFill = (dataObject.fill);
-            Plugin.Logger.LogWarning($"Found data: {value} ({key})");
+            if (itemData == null) itemData = new("BottleType", 0f);
+            GetComponentInChildren<ScanNodeProperties>().headerText = itemData.name;
+            _localFill = (itemData.fill);
         }
         else
         {
-            Plugin.Logger.LogWarning($"Couldn't find save data for {GetType().Name}. ({key}). Please send this log to the mod developer.");
+            Plugin.Logger.LogWarning($"Couldn't find save data for {GetType().Name} ({saveData}). Please send this log to the mod developer.");
         }
     }
         
     public override int GetItemDataToSave()
     {
-        Plugin.Instance.bottleItemList.Add(this);
-        Dictionary<int, string> data = new Dictionary<int, string>();
-        BottleItemData obj = new(net_Name.Value.ToString(), net_Fill.Value);
-        data.Add(Plugin.Instance.bottleItemList.Count, JsonUtility.ToJson(obj));
-        //data.Add(Plugin.Instance.bottleItemList.Count(), GetComponentInChildren<ScanNodeProperties>().headerText); //data.Add((int)(net_Fill.Value * 100f) + Math.Abs(transform.position.x + transform.position.y + transform.position.z), GetComponentInChildren<ScanNodeProperties>().headerText);
-        SaveUtils.AddToQueue(GetType(), data, "shipBottleData");
-        return Plugin.Instance.bottleItemList.Count;
+        Data = new BottleItemData(net_Name.Value.ToString(), net_Fill.Value);
+        return base.GetItemDataToSave();
     }
 
     private static RaycastHit[] _potionBreakHits = new RaycastHit[20];
@@ -375,6 +348,7 @@ class PotionBottle : Throwable
         // TODO: Glass shatter effect and puddle instantiation
         EnableItemMeshes(false);
         var audioSource = gameObject.GetComponent<AudioSource>();
+        RoundManager.Instance.PlayAudibleNoise(transform.position, 10f, 1, 0, false, 0);
         audioSource.PlayOneShot(glassBreakSFX, 1f);
         audioSource.PlayOneShot(itemProperties.dropSFX, 1f);
     }
@@ -448,6 +422,7 @@ class PotionBottle : Throwable
         }
         // Call base function after doing logic, so isThrown isn't always set to false when checking.
         base.OnCollisionEnter(collision);
+        RoundManager.Instance.PlayAudibleNoise(transform.position, 6f, 1f, 1, false, 0);
     }
 
 
@@ -471,8 +446,8 @@ class PotionBottle : Throwable
     public override void Update()
     {
         base.Update();
+        rend.material.SetFloat("_Fill", net_Fill.Value);
         if (itemUsedUp) return;
-
 
         MaxWobble = net_Fill.Value * 0.2f;
         if (IsOwner && playerHeldBy != null && net_mode.Value == BottleModes.Drink && Holding && net_isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
@@ -490,8 +465,6 @@ class PotionBottle : Throwable
             itemUsedUp = true;
             return;
         }
-
-        rend.material.SetFloat("_Fill", net_Fill.Value);
         Wobble();
     }
 

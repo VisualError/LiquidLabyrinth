@@ -14,13 +14,15 @@ internal class PlayerControllerBPatch
     {
         if (__instance.detachedHead && __instance.detachedHeadObject != null)
         {
-            Item headItem = AssetLoader.assetsDictionary["assets/liquid labyrinth/headitem.asset"] as Item;
+            __instance.detachedHeadObject.gameObject.SetActive(false);
+            if (!(NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer)) return;
+            Item? headItem = AssetLoader.assetsDictionary["assets/liquid labyrinth/headitem.asset"] as Item;
+            if (headItem == null) return;
             GameObject obj = GameObject.Instantiate(headItem.spawnPrefab, __instance.transform);
             obj.transform.position = __instance.detachedHeadObject.position;
             obj.transform.rotation = __instance.detachedHeadObject.rotation;
             obj.transform.Rotate(headItem.rotationOffset);
-            __instance.detachedHeadObject.gameObject.SetActive(false);
-            if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer) obj.GetComponent<NetworkObject>().Spawn();
+            obj.GetComponent<NetworkObject>().Spawn();
         }
     }
 
