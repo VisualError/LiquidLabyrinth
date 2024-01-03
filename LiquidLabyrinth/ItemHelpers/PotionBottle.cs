@@ -128,7 +128,7 @@ class PotionBottle : Throwable
         {
             case BottleModes.Open:
                 if (!buttonDown) break;
-                // This is in reverse because we will set the value to this after the logic is done. (If a desync happens, the way this is set up with no RPCS, its gonna fucking explode planet earth)
+                // This is in reverse because we will set the value to this after the logic is done. (If a desync happens, the way this is set up with no RPCS, its gonna fucking explode planet earth. probably)
                 itemAnimator.SetBool("CorkOpen", !net_isOpened.Value);
                 if (!net_isOpened.Value)
                 {

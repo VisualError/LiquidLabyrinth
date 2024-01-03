@@ -11,13 +11,14 @@ namespace LiquidLabyrinth.ItemHelpers
     {
         private Dictionary<int, string> ES3data = new Dictionary<int, string>();
         public object? Data = null;
+        public Type? DataType;
         public override int GetItemDataToSave()
         {
             Dictionary<int, string> data = new Dictionary<int, string>();
             if (!Plugin.Instance.SaveableItemDict.ContainsKey(GetType())) Plugin.Instance.SaveableItemDict.Add(GetType(), 0);
             Plugin.Instance.SaveableItemDict[GetType()]++;
             int Count = Plugin.Instance.SaveableItemDict[GetType()];
-            data.Add(Count, JsonUtility.ToJson(this));
+            data.Add(Count, JsonUtility.ToJson(Data));
             SaveUtils.AddToQueue(GetType(), data, $"ship{itemProperties.itemName}Data");
             return Count;
         }
@@ -26,16 +27,15 @@ namespace LiquidLabyrinth.ItemHelpers
         {
             base.LoadItemSaveData(saveData);
             int key = saveData;
-            Plugin.Logger.LogWarning($"LoadItemSaveData called by {itemProperties.itemName}! Got: {saveData}");
             if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
-            if (!(ES3.KeyExists($"ship{itemProperties.itemName}Data", GameNetworkManager.Instance.currentSaveFileName) && ES3data == null)) return;
+            if (!(ES3.KeyExists($"ship{itemProperties.itemName}Data", GameNetworkManager.Instance.currentSaveFileName))) return;
             ES3data = ES3.Load<Dictionary<int, string>>($"ship{itemProperties.itemName}Data", GameNetworkManager.Instance.currentSaveFileName);
             if (ES3data == null) return;
             if (!ES3data.TryGetValue(key, out string value)) return;
-            var dataObject = JsonUtility.FromJson(value, GetType());
+            var dataObject = JsonUtility.FromJson(value, DataType);
             if (dataObject == null)
             {
-                Plugin.Logger.LogWarning($"Object data was null/empty for {itemProperties.itemName}");
+                Plugin.Logger.LogWarning($"Object data was null/empty for {itemProperties.itemName}. Item save not loaded.");
                 // Create new data here
                 return; // Don't return once you figure out how to populate the data from the constructor inheriting SaveableItem.
             }

@@ -2,6 +2,7 @@
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
+using System;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
@@ -23,7 +24,7 @@ class GrabbableRigidbody : SaveableItem
     public bool floatWhileOrbiting;
     public float gravity = 9.8f;
     internal Rigidbody rb;
-    public AudioSource itemAudio;
+    internal AudioSource itemAudio;
     public float itemMass = 1f;
     public override void Start()
     {
@@ -31,6 +32,7 @@ class GrabbableRigidbody : SaveableItem
         rb = GetComponent<Rigidbody>();
         rb.useGravity = false;
         rb.mass = itemMass;
+        itemAudio = GetComponent<AudioSource>();
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
         base.Start();
