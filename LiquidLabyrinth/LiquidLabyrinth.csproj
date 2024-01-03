@@ -90,7 +90,7 @@
   </Target>
   
   <Target Name="FetchLethalSettings" DependsOnTargets="EnsureLibDir">
-    <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.2.2/ -O ../lib/willis81808-LethalSettings.zip" />
+    <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.3.0/ -O ../lib/willis81808-LethalSettings.zip" />
     <Exec Command="unzip -o ../lib/willis81808-LethalSettings.zip LethalSettings.dll -d ../lib/willis81808-LethalSettings" />
   </Target>
 
