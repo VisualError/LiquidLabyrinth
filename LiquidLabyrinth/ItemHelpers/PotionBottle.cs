@@ -151,7 +151,7 @@ class PotionBottle : Throwable
                 break;
             case BottleModes.Shake:
                 if (!buttonDown) break;
-                CoroutineHandler.Instance.NewCoroutine(ShakeBottle());
+                CoroutineHandler.Instance.NewCoroutine<PotionBottle>(ShakeBottle());
                 break;
         }
         base.ItemActivate(used, buttonDown);
@@ -174,7 +174,7 @@ class PotionBottle : Throwable
             AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
             itemAudio.PlayOneShot(subclip);
             RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
-            CoroutineHandler.Instance.NewCoroutine(itemAudio.FadeOut(1f));
+            CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
             wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
             wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
             yield return new WaitForSeconds(animationDuration-0.35f);
@@ -416,13 +416,13 @@ class PotionBottle : Throwable
     public override void OnCollisionEnter(Collision collision)
     {
         LMBToThrow = false;
+        if (rb.isKinematic) return;
         if (isThrown.Value && BreakBottle)
         {
             HitGround_ServerRpc();
         }
         // Call base function after doing logic, so isThrown isn't always set to false when checking.
         base.OnCollisionEnter(collision);
-        RoundManager.Instance.PlayAudibleNoise(transform.position, 6f, 1f, 1, false, 0);
     }
 
 

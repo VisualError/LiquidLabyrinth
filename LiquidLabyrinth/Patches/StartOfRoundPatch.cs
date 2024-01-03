@@ -40,8 +40,6 @@ class StartOfRoundPatch
     [HarmonyPrefix]
     static bool AwakePrefix()
     {
-        Plugin.Instance.bottleItemList.Clear();
-        Plugin.Instance.headItemList.Clear();
         Plugin.Instance.SaveableItemDict.Clear();
         return true;
     }

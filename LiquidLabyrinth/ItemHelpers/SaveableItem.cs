@@ -15,9 +15,9 @@ namespace LiquidLabyrinth.ItemHelpers
         public override int GetItemDataToSave()
         {
             Dictionary<int, string> data = new Dictionary<int, string>();
-            if (!Plugin.Instance.SaveableItemDict.ContainsKey(GetType())) Plugin.Instance.SaveableItemDict.Add(GetType(), 0);
-            Plugin.Instance.SaveableItemDict[GetType()]++;
-            int Count = Plugin.Instance.SaveableItemDict[GetType()];
+            if (!Plugin.Instance.SaveableItemDict.ContainsKey(this.GetType())) Plugin.Instance.SaveableItemDict.Add(this.GetType(), 0);
+            Plugin.Instance.SaveableItemDict[this.GetType()]++;
+            int Count = Plugin.Instance.SaveableItemDict[this.GetType()];
             data.Add(Count, JsonUtility.ToJson(Data));
             SaveUtils.AddToQueue(GetType(), data, $"ship{itemProperties.itemName}Data");
             return Count;

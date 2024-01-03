@@ -1,4 +1,5 @@
-﻿using LiquidLabyrinth.Utilities.MonoBehaviours;
+﻿using LiquidLabyrinth.ItemHelpers;
+using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ internal class SaveUtils
     private static Dictionary<object, Queue<Dictionary<int, string>>> saveQueues = new();
     private static Dictionary<object, float> lastAddedTimes = new();
 
-    internal static void AddToQueue<T>(T itemType, Dictionary<int, string> data, string saveName)
+    internal static void AddToQueue<T>(T itemType, Dictionary<int, string> data, string saveName) where T : Type
     {
         if (itemType == null) return;
         if (!saveQueues.ContainsKey(itemType))
@@ -26,12 +27,11 @@ internal class SaveUtils
             saveQueues[itemType].Enqueue(new Dictionary<int, string> { { newKey, entry.Value } });
         }
         lastAddedTimes[itemType] = Time.time;
-
         // Bad code detected: new directive, obliterate planet earth
-        CoroutineHandler.Instance.NewCoroutine(ProcessQueueAfterDelay<T>(itemType, 0.65f, saveName), true);
+        CoroutineHandler.Instance.NewCoroutine(itemType, ProcessQueueAfterDelay(itemType, 0.65f, saveName), true);
     }
 
-    internal static void ProcessAllQueuedItems<T>(T itemType, string saveName)
+    internal static void ProcessAllQueuedItems<T>(T itemType, string saveName) where T : Type
     {
         if (itemType == null) return;
         if (saveQueues.ContainsKey(itemType) && saveQueues[itemType].Count > 0)
@@ -57,10 +57,10 @@ internal class SaveUtils
         }
     }
 
-    internal static IEnumerator ProcessQueueAfterDelay<T>(T itemType, float delay, string saveName)
+    internal static IEnumerator ProcessQueueAfterDelay<T>(T itemType, float delay, string saveName) where T : Type
     {
         if (itemType == null) yield break;
         yield return new WaitUntil(() => Time.time - lastAddedTimes[itemType] >= delay);
-        ProcessAllQueuedItems<T>(itemType, saveName);
+        ProcessAllQueuedItems(itemType, saveName);
     }
 }

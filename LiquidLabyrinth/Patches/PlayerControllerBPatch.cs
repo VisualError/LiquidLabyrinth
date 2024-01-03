@@ -2,6 +2,9 @@
 using LiquidLabyrinth.Utilities;
 using Unity.Netcode;
 using UnityEngine;
+using Unity.Netcode.Components;
+using GameNetcodeStuff;
+using LiquidLabyrinth.ItemHelpers;
 
 namespace LiquidLabyrinth.Patches;
 
@@ -26,56 +29,25 @@ internal class PlayerControllerBPatch
         }
     }
 
-    /*[ServerRpc(RequireOwnership=false)]
-    static void SpawnHead_ServerRpc()
-    {
 
-    }*/
-
-    /*[HarmonyPatch(typeof(DeadBodyInfo), "Start")]
-    [HarmonyPrefix]
-    static bool DeadBodyInfo_AwakePatch(DeadBodyInfo __instance)
-    {
-        if (__instance.detachedHead && __instance.detachedHeadObject != null)
-        {
-            Throwable throwable = __instance.detachedHeadObject.gameObject.AddComponent<Throwable>();
-            __instance.detachedHeadObject.gameObject.AddComponent<AudioSource>();
-            throwable.itemProperties = Plugin.Instance.item;
-            NetworkObject net_Object = __instance.detachedHeadObject.gameObject.AddComponent<NetworkObject>();
-            *//*var networkPrefab = new NetworkPrefab
-            {
-                Prefab = net_Object.gameObject,
-            };*//*
-            //LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(networkPrefab);
-            NetworkManager.Singleton.AddNetworkPrefab(__instance.detachedHeadObject.gameObject);
-            if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer) net_Object.Spawn();
-        }
-        return true;
-    }*/
-
-    /*[HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SpawnDeadBody))]
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.PlaceGrabbableObject))]
     [HarmonyPostfix]
-    static void SpawnDeadBodyPostfix(int playerId, int deathAnimation)
+    static void PlaceGrabbableObjectPostfix(PlayerControllerB __instance, ref GrabbableObject placeObject)
     {
-        if(deathAnimation == 1)
+        if(placeObject is GrabbableRigidbody rigid && rigid != null) 
         {
-            DeadBodyInfo[] deadBodyInfo = Object.FindObjectsOfType<DeadBodyInfo>();
-            if (deadBodyInfo != null && deadBodyInfo[0] != null)
-            {
-                foreach(DeadBodyInfo info in deadBodyInfo)
-                {
-                    if(info.playerObjectId == playerId)
-                    {
-                        Throwable throwable = info.detachedHeadObject.gameObject.AddComponent<Throwable>();
-                        info.detachedHeadObject.gameObject.AddComponent<AudioSource>();
-                        throwable.itemProperties = Plugin.Instance.item;
-                        NetworkObject net_Object = info.detachedHeadObject.gameObject.AddComponent<NetworkObject>();
-                        NetworkManager.Singleton.AddNetworkPrefab(net_Object.gameObject);
-                        if (NetworkManager.Singleton.IsHost || NetworkManager.Singleton.IsServer) net_Object.Spawn();
-                        return;
-                    }
-                }
-            }
+            placeObject.EnablePhysics(false);
+            rigid.EnableColliders(true);
+            if (__instance.IsOwner) rigid.PlayDropSFX();
         }
-    }*/
+    }
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.PlaceGrabbableObject))]
+    [HarmonyPrefix]
+    static void PlaceGrabbableObjectPrefix(PlayerControllerB __instance, ref GrabbableObject placeObject)
+    {
+        if (placeObject is GrabbableRigidbody rigid && rigid != null)
+        {
+            if (__instance.IsOwner) rigid.net_Placed.Value = true;
+        }
+    }
 }

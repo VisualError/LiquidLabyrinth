@@ -114,7 +114,7 @@ class Throwable : GrabbableRigidbody
         {
             if (StartOfRound.Instance.timeSinceRoundStarted > 2)
             {
-                rb.isKinematic = !StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase;
+                rb.isKinematic = !StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase || net_Placed.Value;
             }
             isKinematic.Value = rb.isKinematic;
             if (isThrown.Value)

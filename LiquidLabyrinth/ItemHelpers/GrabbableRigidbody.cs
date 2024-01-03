@@ -22,6 +22,7 @@ class GrabbableRigidbody : SaveableItem
     public UnityEvent OnInteractGlobal = new UnityEvent();
     public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    public NetworkVariable<bool> net_Placed = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public bool floatWhileOrbiting;
     public float gravity = 9.8f;
     internal Rigidbody rb;
@@ -31,13 +32,14 @@ class GrabbableRigidbody : SaveableItem
     {
         OnStart?.Invoke();
         rb = GetComponent<Rigidbody>();
+        itemAudio = GetComponent<AudioSource>();
+        if (rb == null || itemAudio == null) { Start(); return; }
         rb.useGravity = false;
         rb.mass = itemMass;
-        itemAudio = GetComponent<AudioSource>();
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
         base.Start();
-        EnablePhysics(true);
+        //EnablePhysics(true);
     }
 
     internal Vector3 oldEnemyPosition;
@@ -53,6 +55,17 @@ class GrabbableRigidbody : SaveableItem
         isHeld = true;
         base.Update();
         isHeld = wasHeld;
+    }
+
+    public void EnableColliders(bool enable)
+    {
+        for (int i = 0; i < propColliders.Length; i++)
+        {
+            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
+            {
+                propColliders[i].enabled = enable;
+            }
+        }
     }
 
 
@@ -78,26 +91,14 @@ class GrabbableRigidbody : SaveableItem
         }
     }
 
-    public new void EnablePhysics(bool enable)
-    {
-        Plugin.Logger.LogWarning("replaced physics called");
-        for (int i = 0; i < propColliders.Length; i++)
-        {
-            if (!(propColliders[i] == null) && !propColliders[i].gameObject.CompareTag("InteractTrigger") && !propColliders[i].gameObject.CompareTag("DoNotSet"))
-            {
-                propColliders[i].enabled = enable;
-            }
-        }
-        // enable rigidbody
-        rb.isKinematic = !enable;
-    }
-
     public override void LateUpdate()
     {
         if (parentObject != null && (isHeld||isHeldByEnemy))
         {
             transform.rotation = parentObject.rotation;
-            transform.Rotate(itemProperties.rotationOffset);
+            Vector3 rotationOffset = itemProperties.rotationOffset;
+            if (isHeldByEnemy) rotationOffset = rotationOffset + new Vector3(0,90,0);
+            transform.Rotate(rotationOffset);
             transform.position = parentObject.position;
             Vector3 positionOffset = itemProperties.positionOffset;
             positionOffset = parentObject.rotation * positionOffset;
@@ -140,6 +141,7 @@ class GrabbableRigidbody : SaveableItem
     [ClientRpc]
     public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
     {
+        if (rb.isKinematic) return;
         OnCollision?.Invoke();
         if (itemAudio == null)
         {
@@ -152,7 +154,7 @@ class GrabbableRigidbody : SaveableItem
         }
         float pitch = OtherUtils.mapValue(rigidBodyMagnitude, 0.8f, 10f, 0.8f, 1.5f);
         itemAudio.pitch = pitch;
-        itemAudio.PlayOneShot(itemProperties.dropSFX);
+        PlayDropSFX();
     }
 
     public override void EquipItem()
@@ -162,6 +164,7 @@ class GrabbableRigidbody : SaveableItem
         itemAudio.pitch = 1f;
         //set parent to null
         transform.parent = null;
+        if (IsOwner) net_Placed.Value = false;
     }
 
     public override void GrabItemFromEnemy(EnemyAI enemy)
@@ -185,10 +188,6 @@ class GrabbableRigidbody : SaveableItem
     public override void DiscardItem()
     {
         OnDiscardItem?.Invoke();
-        if (rb != null)
-        {
-            rb.isKinematic = false;
-        }
         base.DiscardItem();
     }
 

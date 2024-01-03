@@ -98,8 +98,6 @@ internal class Plugin : BaseUnityPlugin
         "Solar Flare", "Nova", "Supernova", "Pulsar", "White Dwarf",
         "Red Giant", "Blue Giant", "Star System"
     ];
-    internal readonly List<HeadItem> headItemList = new();
-    internal readonly List<PotionBottle> bottleItemList = new();
     private void NetcodeWeaver()
     {
         var types = Assembly.GetExecutingAssembly().GetTypes();
@@ -140,6 +138,7 @@ internal class Plugin : BaseUnityPlugin
         Harmony.PatchAll(typeof(GameNetworkManagerPatch));
         Harmony.PatchAll(typeof(PlayerControllerBPatch));
         Harmony.PatchAll(typeof(StartOfRoundPatch));
+        Harmony.PatchAll(typeof(GrabbableObjectPatch));
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
