@@ -2,6 +2,7 @@
 using GameNetcodeStuff;
 using LiquidLabyrinth.Enums;
 using LiquidLabyrinth.ItemData;
+using LiquidLabyrinth.Labyrinth;
 using LiquidLabyrinth.Utilities;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
@@ -13,13 +14,14 @@ using System.Runtime.InteropServices.ComTypes;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
-using static UnityEngine.ParticleSystem.PlaybackState;
+using Quaternion = UnityEngine.Quaternion;
+using Random = UnityEngine.Random;
 using Vector3 = UnityEngine.Vector3;
 
 namespace LiquidLabyrinth.ItemHelpers;
-class PotionBottle : Throwable, INoiseListener
+internal class PotionBottle : Throwable, INoiseListener
 {
-    private Renderer? rend;
+    private Renderer rend;
     [Header("Wobble Settings")]
     Vector3 lastPos;
     Vector3 velocity;
@@ -51,7 +53,7 @@ class PotionBottle : Throwable, INoiseListener
     public AudioClip glassBreakSFX;
     public AudioClip liquidShakeSFX;
 
-    public GameObject Liquid;
+    public List<LiquidAPI.Liquid> _Liquids;
     public List<string> BottleProperties; // TODO: Add bottle properties class. API in mind, change `string` into the class.
     string bottleType; // for debugging only
     [Space(3f)]
@@ -85,8 +87,8 @@ class PotionBottle : Throwable, INoiseListener
     {
         base.EquipItem();
         playerHeldBy.equippedUsableItemQE = true;
-        wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
-        wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
+        wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
+        wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
         if (IsOwner)
         {
             net_playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
@@ -144,12 +146,11 @@ class PotionBottle : Throwable, INoiseListener
             case BottleModes.Drink:
                 if (!net_isOpened.Value) break;
                 playerHeldBy.playerBodyAnimator.SetBool("useTZPItem", buttonDown);
-                //itemAnimator.SetBool("Drink", buttonDown);
                 break;
             case BottleModes.Throw:
                 LMBToThrow = true;
                 playerThrownBy = playerHeldBy;
-                if (IsOwner && UnityEngine.Random.Range(1, 100) <= 25) BreakBottle = true;
+                if (IsOwner && Random.Range(1, 100) <= 25) BreakBottle = true;
                 break;
             case BottleModes.Toast:
                 if (!buttonDown || !IsOwner) break;
@@ -167,31 +168,41 @@ class PotionBottle : Throwable, INoiseListener
 
     private IEnumerator ShakeBottle()
     {
+        // bad code
+        playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+        AnimatorStateInfo stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
+        float animationDuration = stateInfo.length;
+        float _start = Random.Range(0, liquidShakeSFX.length - animationDuration);
+        float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
+        AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
+        itemAudio.PlayOneShot(subclip);
+        RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
+        CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
+        wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
+        wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
         while (Holding)
         {
-            playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
-            AnimatorStateInfo stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
-            if (!stateInfo.IsName("ShakeItem"))
+            yield return new WaitForSeconds(0.05f);
+            stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
+            if (stateInfo.IsName("ShakeItem") && stateInfo.normalizedTime > 0.76f)
             {
-                yield return null;
-                continue;
+                playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+                animationDuration = stateInfo.length;
+                _start = Random.Range(0, liquidShakeSFX.length - animationDuration);
+                _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
+                subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
+                itemAudio.PlayOneShot(subclip);
+                RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
+                CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
+                wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
+                wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
             }
-            float animationDuration = stateInfo.length;
-            float _start = UnityEngine.Random.Range(0, liquidShakeSFX.length - animationDuration);
-            float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
-            AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
-            itemAudio.PlayOneShot(subclip);
-            RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
-            CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
-            wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
-            wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
-            yield return new WaitForSeconds(animationDuration-0.35f);
         }
         yield break;
     }
 
     // this shit don't work.
-    private Coroutine ToastCoroutine;
+    private Coroutine? ToastCoroutine;
     private IEnumerator Toast()
     {
         RaycastHit[] hits = Physics.SphereCastAll(new Ray(playerHeldBy.gameplayCamera.transform.position + playerHeldBy.gameplayCamera.transform.forward * 20f, playerHeldBy.gameplayCamera.transform.forward), 20f, 80f, LayerMask.GetMask("Props"));
@@ -243,6 +254,7 @@ class PotionBottle : Throwable, INoiseListener
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
+        _Liquids = LiquidAPI.RandomLiquids(10);
         light = GetComponentInChildren<Light>();
         floatWhileOrbiting = true;
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
@@ -254,7 +266,7 @@ class PotionBottle : Throwable, INoiseListener
             {
                 if (nodeProperties.headerText == "BottleType")
                 {
-                    nodeProperties.headerText = MarkovChain.GenerateText(UnityEngine.Random.Range(3,14), 128);
+                    nodeProperties.headerText = MarkovChain.GenerateText(Random.Range(3,14), 128);
                     Plugin.Logger.LogWarning("generating random name");
                 }
                 bottleType = nodeProperties.headerText;
@@ -276,7 +288,7 @@ class PotionBottle : Throwable, INoiseListener
             }
             if (net_Fill.Value == -1)
             {
-                net_Fill.Value = UnityEngine.Random.Range(0f, 1f);
+                net_Fill.Value = Random.Range(0f, 1f);
                 Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
             }
         }
@@ -289,15 +301,22 @@ class PotionBottle : Throwable, INoiseListener
         nodeProperties.headerText = net_Name.Value.ToString();
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
-        if (Liquid != null)
+        if (_Liquids != null && _Liquids.Count > 0)
         {
-            rend = Liquid.GetComponent<MeshRenderer>();
+            Color color = LiquidAPI.CombineColor(_Liquids);
+            foreach (LiquidAPI.Liquid liq in _Liquids)
+            {
+                Plugin.Logger.LogWarning($"GOT: {liq.LiquidID}");
+            }
+            _Liquids[0].Container = transform.Find("Liquid").gameObject;
+            rend = _Liquids[0].Container.GetComponent<MeshRenderer>();
             rend.material.SetFloat("_Emission", net_emission.Value);
-            rend.material.SetColor("_LiquidColor", net_color.Value);
-            rend.material.SetColor("_SurfaceColor", net_lighterColor.Value);
+            rend.material.SetColor("_LiquidColor", color);
+            rend.material.SetColor("_SurfaceColor", color);
             rend.material.SetFloat("_Fill", net_Fill.Value);
+            light.color = color;
+            itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         }
-        light.color = net_color.Value;
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -362,14 +381,14 @@ class PotionBottle : Throwable, INoiseListener
         audioSource.PlayOneShot(glassBreakSFX, 1f);
         audioSource.PlayOneShot(itemProperties.dropSFX, 1f);
     }
-        
+
     void RevivePlayer(PlayerControllerB player, Vector3 position)
     {
         if (!(IsServer || IsHost)) return;
         if (player.deadBody == null) return;
             
             
-        if (25 >= UnityEngine.Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
+        if (25 >= Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
         {
             Vector3 navMeshPosition = RoundManager.Instance.GetNavMeshPosition(position, default, 10f);
             ReviveAsEnemy(player, navMeshPosition);
@@ -384,7 +403,7 @@ class PotionBottle : Throwable, INoiseListener
         if (!Plugin.Instance.spawnRandomEnemy.Value)
             return Plugin.Instance.enemyTypes["Masked"];
 
-        return Plugin.Instance.enemyTypes.ElementAt(UnityEngine.Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
+        return Plugin.Instance.enemyTypes.ElementAt(Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
     }
         
     void ReviveAsEnemy(PlayerControllerB player, Vector3 navMeshPosition)
@@ -457,7 +476,23 @@ class PotionBottle : Throwable, INoiseListener
     public override void Update()
     {
         base.Update();
-        if(Vector3.Distance(lastNoisePosition, transform.position) > 4.2f && IsServer)
+        float distance = Vector3.Distance(lastNoisePosition, transform.position);
+        Vector3 directionToNoise = (new Vector3(0, lastNoisePosition.y, 0) - new Vector3(0, transform.position.y, 0)).normalized;
+        if (net_isFloating.Value)
+        {
+            rb.AddForce(directionToNoise * 0.05f, ForceMode.VelocityChange);
+            Quaternion targetRotation = Random.rotation;
+
+            // Calculate the difference between the current rotation and the target rotation
+            Quaternion deltaRotation = targetRotation * Quaternion.Inverse(rb.rotation);
+
+            // Convert the rotation difference to a torque
+            Vector3 torque = new Vector3(deltaRotation.x, deltaRotation.y, deltaRotation.z) * 10f; // adjust the multiplier as needed
+
+            // Apply the torque
+            rb.AddTorque(torque, ForceMode.Acceleration);
+        }
+        if (distance > 4.2f && (IsServer || IsHost))
         {
             net_isFloating.Value = false;
         }
@@ -471,13 +506,13 @@ class PotionBottle : Throwable, INoiseListener
             net_emission.Value = Mathf.Lerp(net_emission.Value, maxEmission, lerpFactor);
             shakeTime += Time.deltaTime; // increment the elapsed time
         }
-        else if (net_emission.Value > 0.001f)
+        else if (net_emission.Value > 0.001f && IsOwner)
         {
             float t = elapsedTime / shakeTime; // calculate the interpolation factor
             net_emission.Value = Mathf.Lerp(net_emission.Value, 0, t); // interpolate between start and end values
             elapsedTime += Time.deltaTime; // increment the elapsed time
         }
-        else
+        else if(IsOwner)
         {
             net_emission.Value = 0f;
             elapsedTime = 0f;
@@ -537,24 +572,8 @@ class PotionBottle : Throwable, INoiseListener
     public void DetectNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot, int noiseID)
     {
         if (!(IsHost || IsServer)) return;
-        Vector3 force = Vector3.up * 0.2f;
-        float distance = Vector3.Distance(noisePosition, transform.position);
         if (noiseID != 5) return;
-        if (distance > 3.2f)
-        {
-            force = Vector3.down * 0.2f;
-        }
-        if (distance < 3.8f)
-        {
-            force = Vector3.down * 0.2f;
-        }
-        if (distance > 4.2f)
-        {
-            net_isFloating.Value = false;
-            return;
-        }
         lastNoisePosition = noisePosition;
         net_isFloating.Value = true;
-        rb.AddForce(force, ForceMode.VelocityChange);
     }
 }

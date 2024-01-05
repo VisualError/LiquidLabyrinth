@@ -8,6 +8,9 @@
 - Bottle physics gets disabled when ship is moving (Needed to do this because the bottle would bug out of existence)
 - Revive could be bugged.
 
+### Known Incompatibilities:
+- AdvancedCompany, solution: Restart your game if you change the config `Set items as buyable`, also all players must have the same config value for this setting.
+
 ### Planning
 - Liquid API support
 - Procedurally generated liquids

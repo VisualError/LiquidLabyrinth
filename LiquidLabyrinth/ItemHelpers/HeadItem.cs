@@ -7,11 +7,15 @@ using Unity.Netcode;
 using UnityEngine;
 using BepInEx;
 using LiquidLabyrinth.ItemData;
+using LethalLib.Modules;
+using UnityEngine.PlayerLoop;
+using BepInEx.AssemblyPublicizer;
+using System.Diagnostics;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
 
-class HeadItem : Throwable
+class HeadItem : Throwable, INoiseListener
 {
 
     private string? _localtooltip;
@@ -66,6 +70,16 @@ class HeadItem : Throwable
         // Using local variables because network object hasn't been spawned on the server yet. These values will be useful for OnNetworkSpawn
     }
 
+    public override void FixedUpdate()
+    {
+        base.FixedUpdate();
+        if (lastNoisePosition.HasValue)
+        {
+            Vector3 directionToNoise = (lastNoisePosition.Value - transform.position).normalized;
+            rb.AddForce(directionToNoise * 1.5f, ForceMode.Acceleration);
+        }
+    }
+
     public override void Update()
     {
         base.Update();
@@ -117,4 +131,15 @@ class HeadItem : Throwable
         Equiped = false;
     }
 
+    Vector3? lastNoisePosition;
+    public void DetectNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot, int noiseID)
+    {
+        if (noiseID != 75)
+        {
+            lastNoisePosition = null;
+            return;
+        }
+        lastNoisePosition = noisePosition;
+        Plugin.Logger.LogWarning($"heard at {noisePosition}");
+    }
 }

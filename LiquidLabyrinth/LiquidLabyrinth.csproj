@@ -86,6 +86,10 @@
       <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Components.dll</HintPath>
     </Reference>
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Resources\" />
+  </ItemGroup>
   
   <Target Name="EnsureLibDir">
     <MakeDir Directories="../lib" Condition="!Exists('../lib')" />

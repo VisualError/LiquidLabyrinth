@@ -31,8 +31,11 @@ internal class AssetLoader
             assetsDictionary.Add(assetName, asset);
             if (asset is Item item)
             {
-                LethalLib.Modules.Items.RegisterShopItem(item, -1);
-                Plugin.Logger.LogWarning($"Added Shop Item: {assetName}");
+                if (Plugin.Instance.SetAsShopItems.Value)
+                {
+                    LethalLib.Modules.Items.RegisterShopItem(item, -1);
+                    Plugin.Logger.LogWarning($"Added Shop Item: {assetName}");
+                }
                 int rarity = item.GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
                 LethalLib.Modules.Items.RegisterScrap(item, rarity, LethalLib.Modules.Levels.LevelTypes.All);
                 Plugin.Logger.LogWarning($"Added Scrap Item: {assetName}");

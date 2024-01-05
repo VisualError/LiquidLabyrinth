@@ -14,18 +14,30 @@ namespace LiquidLabyrinth.ItemHelpers
         public Type? DataType;
         public override int GetItemDataToSave()
         {
-            Dictionary<int, string> data = new Dictionary<int, string>();
-            if (!Plugin.Instance.SaveableItemDict.ContainsKey(this.GetType())) Plugin.Instance.SaveableItemDict.Add(this.GetType(), 0);
-            Plugin.Instance.SaveableItemDict[this.GetType()]++;
-            int Count = Plugin.Instance.SaveableItemDict[this.GetType()];
-            data.Add(Count, JsonUtility.ToJson(Data));
-            SaveUtils.AddToQueue(GetType(), data, $"ship{itemProperties.itemName}Data");
+            int Count = -1;
+            try 
+            {
+                Dictionary<int, string> data = new Dictionary<int, string>();
+                if (!Plugin.Instance.SaveableItemDict.ContainsKey(this.GetType())) Plugin.Instance.SaveableItemDict.Add(this.GetType(), 0);
+                Plugin.Instance.SaveableItemDict[this.GetType()]++;
+                Count = Plugin.Instance.SaveableItemDict[this.GetType()];
+                string SerializedData = JsonUtility.ToJson(Data);
+                data.Add(Count, SerializedData);
+                Plugin.Logger.LogWarning($"Got: {SerializedData}");
+                SaveUtils.AddToQueue(GetType(), data, $"ship{itemProperties.itemName}Data");
+                return Count;
+            }
+            catch(Exception err)
+            {
+                Plugin.Logger.LogError(err);
+            }
             return Count;
         }
 
         public override void LoadItemSaveData(int saveData)
         {
             base.LoadItemSaveData(saveData);
+            if (DataType == null) return;
             int key = saveData;
             if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server.
             if (!(ES3.KeyExists($"ship{itemProperties.itemName}Data", GameNetworkManager.Instance.currentSaveFileName))) return;

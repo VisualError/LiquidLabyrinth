@@ -40,7 +40,6 @@ class GrabbableRigidbody : SaveableItem
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
         base.Start();
-        //EnablePhysics(true);
     }
 
     internal Vector3 oldEnemyPosition;
@@ -119,6 +118,7 @@ class GrabbableRigidbody : SaveableItem
             net_GrabbableToEnemies.Value = Plugin.Instance.IsGrabbableToEnemies.Value;
         }
         grabbableToEnemies = net_GrabbableToEnemies.Value;
+        rb = GetComponent<Rigidbody>();
     }
 
     public virtual void OnCollisionEnter(Collision collision)
@@ -165,6 +165,7 @@ class GrabbableRigidbody : SaveableItem
         itemAudio.pitch = 1f;
         //set parent to null
         transform.parent = null;
+        EnablePhysics(false);
         if (IsOwner) net_Placed.Value = false;
     }
 
@@ -208,5 +209,11 @@ class GrabbableRigidbody : SaveableItem
     public new void FallToGround(bool randomizePosition = false)
     {
         // stub, we do not need this.
+    }
+
+    public new void EnablePhysics(bool enable)
+    {
+        EnableColliders(enable);
+        rb.isKinematic = !enable;
     }
 }

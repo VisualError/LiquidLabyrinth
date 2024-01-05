@@ -15,20 +15,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## Version [v0.0.6-v0.0.7]
+## Version [0.0.8]
+### Added
+- Heads now rotate to players if it hears any speak.
+
+
+## Version [0.0.7]
 ### Fixed
 - Fixed RPC Error from head item
-- Position syncing issues
-- 
 
 ### Changed
-- Lowered Spawn rates
 - Changed liquid material.
 - Head texture should now have a bottom texture.
 
 ### Added
 - Added shake to make bottle liquid glow
 - Liquids should now float and glow when listening to boomboxes
+
+## Version [0.0.6]
+### Fixed
+- Position syncing issues
+
+### Changed
+- Lowered Spawn rates
 
 ## Version [0.0.5]
 ### Fixed

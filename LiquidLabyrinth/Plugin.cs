@@ -13,6 +13,9 @@ using UnityEngine;
 using LiquidLabyrinth.ItemHelpers;
 using System.Globalization;
 using System;
+using LiquidLabyrinth.Labyrinth;
+using LiquidLabyrinth.Events;
+using System.Linq;
 
 namespace LiquidLabyrinth;
 
@@ -135,11 +138,13 @@ internal class Plugin : BaseUnityPlugin
 
 
         OtherUtils.GenerateLayerMap();
-        Harmony.PatchAll(typeof(GameNetworkManagerPatch));
-        Harmony.PatchAll(typeof(PlayerControllerBPatch));
-        Harmony.PatchAll(typeof(StartOfRoundPatch));
-        Harmony.PatchAll(typeof(GrabbableObjectPatch));
-        Harmony.PatchAll(typeof(INoiseListenerWorkaround));
+        var patchClasses = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.Namespace == "LiquidLabyrinth.Patches");
+        foreach (var patchClass in patchClasses)
+        {
+            Logger.LogInfo($"Patching {patchClass.Name}");
+            Harmony.CreateAndPatchAll(patchClass);
+            Logger.LogInfo($"Patched {patchClass.Name}");
+        }
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
@@ -155,8 +160,41 @@ internal class Plugin : BaseUnityPlugin
             MarkovChain.TrainMarkovChain(name);
         }
         // Bundle loader.
-
         AssetLoader.LoadAssetBundles();
+
+        // Liquid API
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid1",
+            Color = Color.black
+        });
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid2",
+            Color = Color.red
+        });
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid3",
+            Color = Color.blue
+        });
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid4",
+            Color = Color.yellow
+        });
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid5",
+            Color = Color.magenta
+        });
+        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
+        {
+            Name = "Liquid6",
+            Color = Color.grey
+        });
+
+        // Lethal settings.
         try
         {
             ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
@@ -164,8 +202,8 @@ internal class Plugin : BaseUnityPlugin
                 Name = MyPluginInfo.PLUGIN_NAME,
                 Id = MyPluginInfo.PLUGIN_GUID,
                 Description = "Liquid Labyrinth: Mysterious liquids",
-                MenuComponents = new MenuComponent[]
-                {
+                MenuComponents =
+                [
                     new ToggleComponent
                     {
                         Value = RevivePlayer.Value,
@@ -242,15 +280,15 @@ internal class Plugin : BaseUnityPlugin
                     },
                     new VerticalComponent
                     {
-                        Children = new MenuComponent[]
-                        {
+                        Children =
+                        [
                             new LabelComponent
                             {
                                 Text=string.Join("\n",customNameList.Value.Split(","))
                             }
-                        }
+                        ]
                     }
-                }
+                ]
             }); // TODO: Dynamically add components using reflection on bepinex configs;
         }
         catch(System.Exception err)
