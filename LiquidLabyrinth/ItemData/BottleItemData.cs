@@ -9,10 +9,11 @@ namespace LiquidLabyrinth.ItemData
     [Serializable]
     public class BottleItemData
     {
-        public BottleItemData(string _name, float _fill)
+        public BottleItemData(string _name, float _fill, string liquidID)
         {
             name = _name ?? "BottleType";
             fill = _fill != 0f ? _fill : UnityEngine.Random.Range(0f, 1f);
+            LiquidID = liquidID;
         }
         public bool IsNullOrEmpty()
         {
@@ -20,5 +21,6 @@ namespace LiquidLabyrinth.ItemData
         }
         public string name;
         public float fill;
+        public string LiquidID;
     }
 }

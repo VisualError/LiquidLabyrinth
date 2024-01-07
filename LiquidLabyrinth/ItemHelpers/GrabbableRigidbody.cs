@@ -3,6 +3,7 @@ using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Events;
 using System;
+using UnityEngine.UIElements;
 
 namespace LiquidLabyrinth.ItemHelpers;
 
@@ -12,14 +13,6 @@ namespace LiquidLabyrinth.ItemHelpers;
 class GrabbableRigidbody : SaveableItem
 {
 
-    // EVENTS:
-    public UnityEvent OnStart = new UnityEvent();
-    public UnityEvent OnUpdate = new UnityEvent();
-    public UnityEvent OnDiscardItem = new UnityEvent();
-    public UnityEvent OnEquipItem = new UnityEvent();
-    public UnityEvent OnCollision = new UnityEvent();
-    public UnityEvent OnInteractLocal = new UnityEvent();
-    public UnityEvent OnInteractGlobal = new UnityEvent();
     public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<bool> net_Placed = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -31,7 +24,6 @@ class GrabbableRigidbody : SaveableItem
     public float itemMass = 1f;
     public override void Start()
     {
-        OnStart?.Invoke();
         rb = GetComponent<Rigidbody>();
         itemAudio = GetComponent<AudioSource>();
         if (rb == null || itemAudio == null) return;
@@ -46,7 +38,6 @@ class GrabbableRigidbody : SaveableItem
 
     public override void Update()
     {
-        OnUpdate?.Invoke();
         // hax
         fallTime = 1.0f;
         reachedFloorTarget = true;
@@ -143,7 +134,6 @@ class GrabbableRigidbody : SaveableItem
     public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
     {
         if (rb == null || rb.isKinematic) return;
-        OnCollision?.Invoke();
         if (itemAudio == null)
         {
             Plugin.Logger.LogWarning("ITEM AUDIO SOURCE DOESNT EXIST.");
@@ -160,7 +150,6 @@ class GrabbableRigidbody : SaveableItem
 
     public override void EquipItem()
     {
-        OnEquipItem?.Invoke();
         base.EquipItem();
         itemAudio.pitch = 1f;
         //set parent to null
@@ -187,16 +176,21 @@ class GrabbableRigidbody : SaveableItem
         enemyCurrentlyHeld = null;
     }
 
+    public override void PocketItem()
+    {
+        base.PocketItem();
+        EnablePhysics(false);
+    }
+
     public override void DiscardItem()
     {
-        OnDiscardItem?.Invoke();
+        EnablePhysics(true);
         base.DiscardItem();
     }
 
     public override void InteractItem()
     {
         base.InteractItem();
-        OnInteractLocal?.Invoke();
         itemAudio.pitch = 1f;
     }
 

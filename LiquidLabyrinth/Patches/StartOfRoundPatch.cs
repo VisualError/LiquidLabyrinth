@@ -23,17 +23,6 @@ class StartOfRoundPatch
                 Plugin.Logger.LogWarning($"Added enemy to list: {type.enemyName}");
             }
         }
-
-        bool isHost = (NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost);
-        if (!isHost)
-        {
-            RemoveShopItems();
-            return;
-        }
-        if (!Plugin.Instance.SetAsShopItems.Value)
-        {
-            RemoveShopItems();
-        }
     }
 
     [HarmonyPatch(nameof(StartOfRound.Awake))]
@@ -42,14 +31,5 @@ class StartOfRoundPatch
     {
         Plugin.Instance.SaveableItemDict.Clear();
         return true;
-    }
-
-    private static void RemoveShopItems()
-    {
-        foreach (Item item in AssetLoader.items)
-        {
-            LethalLib.Modules.Items.RemoveShopItem(item);
-            Plugin.Logger.LogWarning($"Removing shop item: {item}");
-        }
     }
 }

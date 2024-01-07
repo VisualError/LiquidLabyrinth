@@ -53,9 +53,7 @@ internal class PotionBottle : Throwable, INoiseListener
     public AudioClip glassBreakSFX;
     public AudioClip liquidShakeSFX;
 
-    public List<LiquidAPI.Liquid> _Liquids;
-    public List<string> BottleProperties; // TODO: Add bottle properties class. API in mind, change `string` into the class.
-    string bottleType; // for debugging only
+    public LiquidAPI.Liquid Liquid;
     [Space(3f)]
     [Header("Liquid Properties")]
     public bool BreakBottle = false;
@@ -254,7 +252,7 @@ internal class PotionBottle : Throwable, INoiseListener
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        _Liquids = LiquidAPI.RandomLiquids(10);
+        Liquid = LiquidAPI.RandomLiquid;
         light = GetComponentInChildren<Light>();
         floatWhileOrbiting = true;
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
@@ -269,7 +267,6 @@ internal class PotionBottle : Throwable, INoiseListener
                     nodeProperties.headerText = MarkovChain.GenerateText(Random.Range(3,14), 128);
                     Plugin.Logger.LogWarning("generating random name");
                 }
-                bottleType = nodeProperties.headerText;
                 net_Name.Value = new FixedString128Bytes(nodeProperties.headerText);
                 nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
             }
@@ -299,24 +296,20 @@ internal class PotionBottle : Throwable, INoiseListener
         }
         // Sync to all clients.
         nodeProperties.headerText = net_Name.Value.ToString();
-        itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
-        if (_Liquids != null && _Liquids.Count > 0)
+        if (Liquid != null)
         {
-            Color color = LiquidAPI.CombineColor(_Liquids);
-            foreach (LiquidAPI.Liquid liq in _Liquids)
-            {
-                Plugin.Logger.LogWarning($"GOT: {liq.LiquidID}");
-            }
-            _Liquids[0].Container = transform.Find("Liquid").gameObject;
-            rend = _Liquids[0].Container.GetComponent<MeshRenderer>();
+            Plugin.Logger.LogWarning($"GOT: {Liquid.Name} from {Liquid.ModName}");
+            nodeProperties.subText += $"\nLiquid(s): {Liquid.Name}";
+            Liquid.Container = transform.Find("Liquid").gameObject;
+            rend = Liquid.Container.GetComponent<MeshRenderer>();
             rend.material.SetFloat("_Emission", net_emission.Value);
-            rend.material.SetColor("_LiquidColor", color);
-            rend.material.SetColor("_SurfaceColor", color);
+            rend.material.SetColor("_LiquidColor", Liquid.Color);
+            rend.material.SetColor("_SurfaceColor", Liquid.Color);
             rend.material.SetFloat("_Fill", net_Fill.Value);
-            light.color = color;
-            itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
+            light.color = Liquid.Color;
         }
+        itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -326,7 +319,7 @@ internal class PotionBottle : Throwable, INoiseListener
         if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server. (bottom part prob already wont run if youre client, but just incase)
         if (Data is BottleItemData itemData)
         {
-            if (itemData == null) itemData = new("BottleType", 0f);
+            if (itemData == null) itemData = new("BottleType", 0f, Liquid.ShortID);
             GetComponentInChildren<ScanNodeProperties>().headerText = itemData.name;
             _localFill = (itemData.fill);
         }
@@ -338,7 +331,7 @@ internal class PotionBottle : Throwable, INoiseListener
         
     public override int GetItemDataToSave()
     {
-        Data = new BottleItemData(net_Name.Value.ToString(), net_Fill.Value);
+        Data = new BottleItemData(net_Name.Value.ToString(), net_Fill.Value, Liquid.ShortID);
         return base.GetItemDataToSave();
     }
 
@@ -357,17 +350,16 @@ internal class PotionBottle : Throwable, INoiseListener
     void DoPotionEffect()
     {
         // REVIVE TEST:
-        var size = Physics.SphereCastNonAlloc(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 10f, _potionBreakHits, 80f, 1048576);
-        if (size == 0) return;
+        var size = Physics.SphereCastNonAlloc(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 3f, _potionBreakHits, 2f, 1572872);
+        if (size == 0)
+        {
+            Liquid.OnContainerBreak();
+        }
 
         foreach (RaycastHit hit in _potionBreakHits)
         {
-            if (net_CanRevivePlayer.Value && hit.transform.TryGetComponent(out DeadBodyInfo deadBodyInfo))
-            {
-                PlayerControllerB player = deadBodyInfo.playerScript;
-                RevivePlayer(player, hit.transform.position);
-                return;
-            }
+            if (hit.transform == null) return;
+            Liquid.OnContainerBreak(hit);
         }
     }
     
@@ -382,67 +374,7 @@ internal class PotionBottle : Throwable, INoiseListener
         audioSource.PlayOneShot(itemProperties.dropSFX, 1f);
     }
 
-    void RevivePlayer(PlayerControllerB player, Vector3 position)
-    {
-        if (!(IsServer || IsHost)) return;
-        if (player.deadBody == null) return;
-            
-            
-        if (25 >= Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
-        {
-            Vector3 navMeshPosition = RoundManager.Instance.GetNavMeshPosition(position, default, 10f);
-            ReviveAsEnemy(player, navMeshPosition);
-            return;
-        }
-
-        Revive_ClientRpc(player, position);
-    }
-
-    EnemyType SelectEnemyType()
-    {
-        if (!Plugin.Instance.spawnRandomEnemy.Value)
-            return Plugin.Instance.enemyTypes["Masked"];
-
-        return Plugin.Instance.enemyTypes.ElementAt(Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
-    }
-        
-    void ReviveAsEnemy(PlayerControllerB player, Vector3 navMeshPosition)
-    {
-        NetworkObjectReference netObjectRef = RoundManager.Instance.SpawnEnemyGameObject(navMeshPosition, player.transform.eulerAngles.y, -1, SelectEnemyType());
-        if (!netObjectRef.TryGet(out NetworkObject networkObject))
-        {
-            Plugin.Logger.LogWarning("Tried to spawn an enemy, but failed to get spawned enemy game object.");
-            return;
-        }
-        DeactivateBody_ClientRpc(player);
-            
-        var ai = networkObject.GetComponent<EnemyAI>();
-        if (ai == null) return;
-        ai.isOutside = !player.isInsideFactory;
-        ai.allAINodes = GameObject.FindGameObjectsWithTag(ai.isOutside ? "OutsideAINode" : "AINode");
-        player.redirectToEnemy = ai;
-    }
-
-    [ClientRpc]
-    void Revive_ClientRpc(NetworkBehaviourReference player, Vector3 position)
-    {
-        if (!player.TryGet(out PlayerControllerB plr)) return;
-        if (plr.deadBody == null) return;
-            
-        PlayerUtils.RevivePlayer(plr, plr.deadBody, position);
-        plr.deadBody.DeactivateBody(false);
-    }
-
-    [ClientRpc]
-    void DeactivateBody_ClientRpc(NetworkBehaviourReference player)
-    {
-        if (!player.TryGet(out PlayerControllerB plr)) return;
-        if (plr.deadBody == null) return;
-            
-        plr.deadBody.DeactivateBody(false);
-    }
-
-    public override void OnCollisionEnter(UnityEngine.Collision collision)
+    public override void OnCollisionEnter(Collision collision)
     {
         LMBToThrow = false;
         if (rb.isKinematic) return;
@@ -461,11 +393,11 @@ internal class PotionBottle : Throwable, INoiseListener
         base.SetControlTipsForItem();
         string[] allLines;
         string modeString = GetModeString(net_mode.Value, net_isOpened.Value);
-        allLines = new string[]{
+        allLines = [
             $"Name: Bottle of {net_Name.Value}",
             $"Mode: {modeString}",
             "Switch Mode [Q/E]"
-        };
+        ];
         if (IsOwner)
         {
             HUDManager.Instance.ChangeControlTipMultiple(allLines, true, itemProperties);

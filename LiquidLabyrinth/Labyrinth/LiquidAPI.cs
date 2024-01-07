@@ -7,17 +7,48 @@ using System.Collections.Generic;
 using Random = UnityEngine.Random;
 using System.Drawing;
 using Color = UnityEngine.Color;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using LiquidLabyrinth.Labyrinth.Monobehaviours;
+using GameNetcodeStuff;
 
 namespace LiquidLabyrinth.Labyrinth;
 
 // TODO: Add API support.
 public class LiquidAPI
 {
-    private static List<Liquid> registeredLiquids = new List<Liquid>();
+    [Serializable]
+    public abstract class Liquid
+    {
+        public virtual string? Name { get => GetType().Name; }
+        internal string? ModName { set; get; }
+        internal string LiquidID { get => HashString($"{ModName}-{Name}"); }
+        internal string ShortID { get => LiquidID.Substring(0, 4) + LiquidID.Substring(LiquidID.Length - 4, 4); }
+        public abstract Color Color { get; }
+        public virtual string? Description { get; }
+        public abstract void OnEnterLimb(LimbBehaviour limb);
+        public abstract void OnEnterContainer(Container container);
+        public abstract void OnExitContainer(Container container);
+        public virtual void OnContainerBreak(RaycastHit hit)
+        {
+            if (hit.transform.TryGetComponent(out PlayerControllerB player))
+            {
+                player.DamagePlayer(10, true, true, CauseOfDeath.Unknown, 0, false, default);
+            }
+        }
+        public virtual void OnContainerBreak(){}
+        public virtual void OnUpdate() { }
+        public virtual void OnDestroy() { }
+        public GameObject? Container { get; set; }
+    }
+
+
+    public static Dictionary<string ,Liquid> Registry = new Dictionary<string, Liquid>();
 
     public static Liquid RandomLiquid
     {
-        get => registeredLiquids[Random.Range(0, registeredLiquids.Count)];
+        get => Registry.ElementAt(Random.Range(0, Registry.Count)).Value;
     }
 
     public static Color CombineColor(List<Liquid> liquids)
@@ -44,20 +75,14 @@ public class LiquidAPI
         return liquids;
     }
 
-    [Serializable]
-    public class Liquid
+    public static Liquid? GetByID(string ID)
     {
-        public string? Name { get; set; }
-        internal string? ModName { set; get; }
-        internal string LiquidID { get => $"{ModName}-{Name}"; }
-        public Color Color { get; set; }
-        public string? Description { get; set; }
-        internal GameObject? Container { get; set; }
-    }
-
-    public static Liquid GetByID(string ID)
-    {
-        return registeredLiquids.Find(match => match.LiquidID.Equals(ID));
+        Liquid? liquid = Registry.TryGetValue(ID, out Liquid value) ? value : null;
+        if(liquid == null)
+        {
+            Plugin.Logger.LogError($"There is no Liquid registered with the ID: {ID}");
+        }
+        return liquid;
     }
 
     public static List<Liquid> GetByIDs(List<string> ID)
@@ -65,9 +90,20 @@ public class LiquidAPI
         List<Liquid> liquidList = new List<Liquid>();
         foreach(string id in ID) 
         {
-            liquidList.Add(GetByID(id));
+            Liquid? liquid = GetByID(id);
+            if (liquid == null) continue;
+            liquidList.Add(liquid);
         }
         return liquidList;
+    }
+
+    private static string HashString(string strng)
+    {
+        using (SHA256 sha256 = SHA256.Create())
+        {
+            byte[] hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(strng));
+            return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
+        }
     }
 
     public static Liquid RegisterLiquid(Liquid liquid)
@@ -76,9 +112,13 @@ public class LiquidAPI
         var modDLL = callingAssembly.GetName().Name;
         liquid.ModName = modDLL;
 
-        registeredLiquids.Add(liquid);
-
-        Plugin.Logger.LogWarning($"Registered {liquid.Name} from {liquid.ModName}");
+        if (Registry.ContainsKey(liquid.ShortID))
+        {
+            Plugin.Logger.LogError($"Liquid {liquid.Name} from {liquid.ModName} already exists in your modded liquid registry! Try a different name!");
+            return liquid;
+        }
+        Registry.Add(liquid.ShortID, liquid);
+        Plugin.Logger.LogWarning($"Registered {liquid.Name} from {liquid.ModName} ({liquid.ShortID})");
         return liquid;
     }
 }

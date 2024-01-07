@@ -16,6 +16,7 @@ using System;
 using LiquidLabyrinth.Labyrinth;
 using LiquidLabyrinth.Events;
 using System.Linq;
+using LiquidLabyrinth.Labyrinth.Liquids;
 
 namespace LiquidLabyrinth;
 
@@ -135,15 +136,20 @@ internal class Plugin : BaseUnityPlugin
         sb.AppendLine("         `-...-'");
         sb.AppendLine(" Liquid Labyrinth Loaded!");
         Logger.LogWarning(sb.ToString());
-
-
         OtherUtils.GenerateLayerMap();
         var patchClasses = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.Namespace == "LiquidLabyrinth.Patches");
+        var liquidAPIPatches = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.Namespace == "LiquidLabyrinth.Labyrinth.LiquidAPI_Patches");
         foreach (var patchClass in patchClasses)
         {
             Logger.LogInfo($"Patching {patchClass.Name}");
             Harmony.CreateAndPatchAll(patchClass);
             Logger.LogInfo($"Patched {patchClass.Name}");
+        }
+        foreach(var patch in liquidAPIPatches)
+        {
+            Logger.LogInfo($"LIQUID API PATCHING {patch.Name}");
+            Harmony.CreateAndPatchAll(patch);
+            Logger.LogInfo($"LIQUID API PATCHED {patch.Name}");
         }
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
@@ -163,36 +169,8 @@ internal class Plugin : BaseUnityPlugin
         AssetLoader.LoadAssetBundles();
 
         // Liquid API
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid1",
-            Color = Color.black
-        });
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid2",
-            Color = Color.red
-        });
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid3",
-            Color = Color.blue
-        });
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid4",
-            Color = Color.yellow
-        });
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid5",
-            Color = Color.magenta
-        });
-        LiquidAPI.RegisterLiquid(new LiquidAPI.Liquid
-        {
-            Name = "Liquid6",
-            Color = Color.grey
-        });
+        LiquidAPI.RegisterLiquid(new TestLiquid());
+        LiquidAPI.RegisterLiquid(new ReviveLiquid());
 
         // Lethal settings.
         try
