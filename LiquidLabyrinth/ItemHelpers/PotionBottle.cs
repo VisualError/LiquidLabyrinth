@@ -286,25 +286,6 @@ internal class PotionBottle : Throwable, INoiseListener
                 net_Fill.Value = Random.Range(0f, 1f);
                 Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
             }
-            if (net_LiquidID.Value.ToString().IsNullOrWhiteSpace()) 
-            {
-                if (_localLiquidId.IsNullOrWhiteSpace())
-                {
-                    Liquid = LiquidAPI.RandomLiquid;
-                    net_LiquidID.Value = Liquid.ShortID;
-                }
-                else
-                {
-                    net_LiquidID.Value = _localLiquidId;
-                    Liquid = LiquidAPI.GetByID(net_LiquidID.Value.ToString());
-                    if(Liquid == null)
-                    {
-                        Plugin.Logger.LogWarning("Liquid ID search returned null; Generating random liquid (server)");
-                        Liquid = LiquidAPI.RandomLiquid;
-                        net_LiquidID.Value = Liquid.ShortID;
-                    }
-                }
-            }
             if(Liquid != null)
             {
                 net_LiquidColor.Value = Liquid.Color;
@@ -315,7 +296,6 @@ internal class PotionBottle : Throwable, INoiseListener
         {
             playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
         }
-        Liquid = LiquidAPI.GetByID(net_LiquidID.Value.ToString());
         // Sync to all clients.
         nodeProperties.headerText = net_Name.Value.ToString();
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_BottleColor.Value.g, net_BottleColor.Value.r, net_BottleColor.Value.b);
@@ -342,17 +322,49 @@ internal class PotionBottle : Throwable, INoiseListener
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
     }
 
+    void Awake()
+    {
+        LiquidAPI.Liquid _Liquid = LiquidAPI.RandomLiquid;
+        Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
+        Liquid.ModName = _Liquid.ModName;
+    }
+
     public override void LoadItemSaveData(int saveData)
     {
         DataType = typeof(BottleItemData);
         base.LoadItemSaveData(saveData);
         if (!NetworkManager.Singleton.IsHost || !NetworkManager.Singleton.IsServer) return; // Return if not host or server. (bottom part prob already wont run if youre client, but just incase)
+        Plugin.Logger.LogWarning("load called");
         if (Data is BottleItemData itemData)
         {
             if (itemData == null) itemData = new("BottleType", 0f, Liquid.ShortID);
             GetComponentInChildren<ScanNodeProperties>().headerText = itemData.name;
             _localFill = (itemData.fill);
             _localLiquidId = itemData.LiquidID;
+
+            if (!itemData.LiquidID.IsNullOrWhiteSpace())
+            {
+                Plugin.Logger.LogWarning($"GOT ID:{itemData.LiquidID}");
+                LiquidAPI.Liquid _Liquid = LiquidAPI.GetByID(itemData.LiquidID);
+                if(gameObject.TryGetComponent(out LiquidAPI.Liquid liq))
+                {
+                    Plugin.Logger.LogWarning("Found Liquid class, destroying and creating new one");
+                    Destroy(liq);
+                }
+                Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
+                Liquid.ModName = _Liquid.ModName;
+                if (Liquid == null)
+                {
+                    Plugin.Logger.LogError("Liquid is null! This shouldn't happen!!");
+                }
+            }
+            else
+            {
+                // cursed as fuck.
+                LiquidAPI.Liquid _Liquid = (LiquidAPI.Liquid)LiquidAPI.RandomLiquid;
+                Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
+                Liquid.ModName = _Liquid.ModName;
+            }
         }
         else
         {

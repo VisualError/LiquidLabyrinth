@@ -20,7 +20,7 @@ namespace LiquidLabyrinth.Labyrinth;
 public class LiquidAPI
 {
     [Serializable]
-    public abstract class Liquid
+    public abstract class Liquid : NetworkBehaviour
     {
         public virtual string? Name { get => GetType().Name; }
         internal string? ModName { set; get; }
@@ -44,25 +44,11 @@ public class LiquidAPI
     }
 
 
-    public static Dictionary<string ,Liquid> Registry = new Dictionary<string, Liquid>();
+    public static Dictionary<string, Liquid> Registry = new Dictionary<string, Liquid>();
 
     public static Liquid RandomLiquid
     {
         get => Registry.ElementAt(Random.Range(0, Registry.Count)).Value;
-    }
-
-    public static Color CombineColor(List<Liquid> liquids)
-    {
-        float r = 0, g = 0, b = 0, a = 0;
-        foreach (Liquid liquid in liquids)
-        {
-            r += liquid.Color.r;
-            g += liquid.Color.g;
-            b += liquid.Color.b;
-            a += liquid.Color.a;
-        }
-        int count = liquids.Count;
-        return new Color(r / count, g / count, b / count);
     }
 
     public static List<Liquid> RandomLiquids(int num)
@@ -78,7 +64,7 @@ public class LiquidAPI
     public static Liquid? GetByID(string ID)
     {
         Liquid? liquid = Registry.TryGetValue(ID, out Liquid value) ? value : null;
-        if(liquid == null)
+        if(liquid is null)
         {
             Plugin.Logger.LogError($"There is no Liquid registered with the ID: {ID}");
         }
