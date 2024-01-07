@@ -4,17 +4,13 @@ using BepInEx.Logging;
 using HarmonyLib;
 using LethalSettings.UI;
 using LethalSettings.UI.Components;
-using LiquidLabyrinth.Patches;
 using LiquidLabyrinth.Utilities;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
-using LiquidLabyrinth.ItemHelpers;
-using System.Globalization;
 using System;
 using LiquidLabyrinth.Labyrinth;
-using LiquidLabyrinth.Events;
 using System.Linq;
 using LiquidLabyrinth.Labyrinth.Liquids;
 
@@ -169,8 +165,9 @@ internal class Plugin : BaseUnityPlugin
         AssetLoader.LoadAssetBundles();
 
         // Liquid API
-        LiquidAPI.RegisterLiquid(new TestLiquid());
+        LiquidAPI.RegisterLiquid(new ExplosiveLiquid());
         LiquidAPI.RegisterLiquid(new ReviveLiquid());
+        
 
         // Lethal settings.
         try

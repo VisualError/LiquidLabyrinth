@@ -1,4 +1,5 @@
-﻿using DunGen;
+﻿using BepInEx;
+using DunGen;
 using GameNetcodeStuff;
 using LiquidLabyrinth.Enums;
 using LiquidLabyrinth.ItemData;
@@ -32,6 +33,7 @@ internal class PotionBottle : Throwable, INoiseListener
     public float WobbleSpeed = 1f;
     public float Recovery = 1f;
     private float _localFill = -1f;
+    private string _localLiquidId = "";
     float wobbleAmountX;
     float wobbleAmountZ;
     float wobbleAmountToAddX;
@@ -64,9 +66,11 @@ internal class PotionBottle : Throwable, INoiseListener
     private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
-    private NetworkVariable<Color> net_color = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<Color> net_lighterColor = new NetworkVariable<Color>(Color.blue, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<Color> net_BottleColor = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+    private NetworkVariable<Color> net_LiquidColor = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<BottleModes> net_mode = new NetworkVariable<BottleModes>(BottleModes.Open, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    private NetworkVariable<FixedString128Bytes> net_LiquidID = new NetworkVariable<FixedString128Bytes>("", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
     private int _BottleModesLength = Enum.GetValues(typeof(BottleModes)).Length;
     private Light light;
     public string GetModeString(BottleModes mode, bool isOpened)
@@ -252,7 +256,6 @@ internal class PotionBottle : Throwable, INoiseListener
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
-        Liquid = LiquidAPI.RandomLiquid;
         light = GetComponentInChildren<Light>();
         floatWhileOrbiting = true;
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
@@ -268,17 +271,12 @@ internal class PotionBottle : Throwable, INoiseListener
                     Plugin.Logger.LogWarning("generating random name");
                 }
                 net_Name.Value = new FixedString128Bytes(nodeProperties.headerText);
-                nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
             }
             int NameHash = Math.Abs(nodeProperties.headerText.GetHashCode());
             float r = (NameHash * 16807) % 256 / 255f; // Pseudo-random number generator
             float g = ((NameHash * 48271) % 256) / 255f; // Pseudo-random number generator
             float b = ((NameHash * 69621) % 256) / 255f; // Pseudo-random number generator
-            float lightenValue = 1f; // Adjust this value to control how much the color is lightened
-            net_lighterColor.Value = new Color(Mathf.Clamp01(r + lightenValue),
-                Mathf.Clamp01(g + lightenValue),
-                Mathf.Clamp01(b + lightenValue));
-            net_color.Value = new(r, g, b, 1);
+            net_BottleColor.Value = new(r, g, b, 1);
             if (_localFill != -1)
             {
                 net_Fill.Value = _localFill;
@@ -288,26 +286,58 @@ internal class PotionBottle : Throwable, INoiseListener
                 net_Fill.Value = Random.Range(0f, 1f);
                 Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
             }
+            if (net_LiquidID.Value.ToString().IsNullOrWhiteSpace()) 
+            {
+                if (_localLiquidId.IsNullOrWhiteSpace())
+                {
+                    Liquid = LiquidAPI.RandomLiquid;
+                    net_LiquidID.Value = Liquid.ShortID;
+                }
+                else
+                {
+                    net_LiquidID.Value = _localLiquidId;
+                    Liquid = LiquidAPI.GetByID(net_LiquidID.Value.ToString());
+                    if(Liquid == null)
+                    {
+                        Plugin.Logger.LogWarning("Liquid ID search returned null; Generating random liquid (server)");
+                        Liquid = LiquidAPI.RandomLiquid;
+                        net_LiquidID.Value = Liquid.ShortID;
+                    }
+                }
+            }
+            if(Liquid != null)
+            {
+                net_LiquidColor.Value = Liquid.Color;
+            }
         }
         // ^ This part above only runs on server to sync initialization.
         if (net_playerHeldByInt.Value != -1)
         {
             playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
         }
+        Liquid = LiquidAPI.GetByID(net_LiquidID.Value.ToString());
         // Sync to all clients.
         nodeProperties.headerText = net_Name.Value.ToString();
-        gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
+        gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_BottleColor.Value.g, net_BottleColor.Value.r, net_BottleColor.Value.b);
         if (Liquid != null)
         {
             Plugin.Logger.LogWarning($"GOT: {Liquid.Name} from {Liquid.ModName}");
-            nodeProperties.subText += $"\nLiquid(s): {Liquid.Name}";
             Liquid.Container = transform.Find("Liquid").gameObject;
             rend = Liquid.Container.GetComponent<MeshRenderer>();
+            nodeProperties.subText += $"\nLiquid(s): {Liquid.Name}";
             rend.material.SetFloat("_Emission", net_emission.Value);
-            rend.material.SetColor("_LiquidColor", Liquid.Color);
-            rend.material.SetColor("_SurfaceColor", Liquid.Color);
             rend.material.SetFloat("_Fill", net_Fill.Value);
-            light.color = Liquid.Color;
+            if (net_LiquidColor.Value == null) return;
+            Color _lighterColor = new Color(Mathf.Clamp01(net_LiquidColor.Value.r + 1f),
+                Mathf.Clamp01(net_LiquidColor.Value.g + 1f),
+                Mathf.Clamp01(net_LiquidColor.Value.b + 1f));
+            rend.material.SetColor("_SurfaceColor", _lighterColor);
+            rend.material.SetColor("_LiquidColor", net_LiquidColor.Value);
+            light.color = net_LiquidColor.Value;
+        }
+        else
+        {
+            Plugin.Logger.LogError("Liquid is null on client; This shouldn't happen!");
         }
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
     }
@@ -322,6 +352,7 @@ internal class PotionBottle : Throwable, INoiseListener
             if (itemData == null) itemData = new("BottleType", 0f, Liquid.ShortID);
             GetComponentInChildren<ScanNodeProperties>().headerText = itemData.name;
             _localFill = (itemData.fill);
+            _localLiquidId = itemData.LiquidID;
         }
         else
         {

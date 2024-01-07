@@ -50,4 +50,21 @@ internal class PlayerControllerBPatch
             if (__instance.IsOwner) rigid.net_Placed.Value = true;
         }
     }
+
+    [HarmonyPatch(typeof(GrabbableObject), nameof(GrabbableObject.SetScrapValue))]
+    [HarmonyPostfix]
+    static void SetScrapValue(GrabbableObject __instance)
+    {
+        if ((NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) return;
+        ScanNodeProperties componentInChildren = __instance.gameObject.GetComponentInChildren<ScanNodeProperties>();
+        if (componentInChildren != null && __instance is PotionBottle bottle && bottle != null)
+        {
+            if (bottle.Liquid == null)
+            {
+                Plugin.Logger.LogWarning("Screams");
+                return;
+            }
+            componentInChildren.subText += $"\n{bottle.Liquid.Name}";
+        }
+    }
 }

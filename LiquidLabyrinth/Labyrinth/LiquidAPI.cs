@@ -12,6 +12,7 @@ using System.Security.Cryptography;
 using System.Text;
 using LiquidLabyrinth.Labyrinth.Monobehaviours;
 using GameNetcodeStuff;
+using Unity.Netcode;
 
 namespace LiquidLabyrinth.Labyrinth;
 
@@ -37,9 +38,8 @@ public class LiquidAPI
                 player.DamagePlayer(10, true, true, CauseOfDeath.Unknown, 0, false, default);
             }
         }
-        public virtual void OnContainerBreak(){}
+        public virtual void OnContainerBreak() { }
         public virtual void OnUpdate() { }
-        public virtual void OnDestroy() { }
         public GameObject? Container { get; set; }
     }
 
