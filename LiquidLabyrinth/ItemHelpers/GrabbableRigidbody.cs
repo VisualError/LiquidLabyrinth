@@ -12,14 +12,6 @@ namespace LiquidLabyrinth.ItemHelpers;
 class GrabbableRigidbody : SaveableItem
 {
 
-    // EVENTS:
-    public UnityEvent OnStart = new UnityEvent();
-    public UnityEvent OnUpdate = new UnityEvent();
-    public UnityEvent OnDiscardItem = new UnityEvent();
-    public UnityEvent OnEquipItem = new UnityEvent();
-    public UnityEvent OnCollision = new UnityEvent();
-    public UnityEvent OnInteractLocal = new UnityEvent();
-    public UnityEvent OnInteractGlobal = new UnityEvent();
     public EnemyAI? enemyCurrentlyHeld;
     private NetworkVariable<bool> net_GrabbableToEnemies = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     public NetworkVariable<bool> net_Placed = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -31,7 +23,6 @@ class GrabbableRigidbody : SaveableItem
     public float itemMass = 1f;
     public override void Start()
     {
-        OnStart?.Invoke();
         rb = GetComponent<Rigidbody>();
         itemAudio = GetComponent<AudioSource>();
         if (rb == null || itemAudio == null) return;
@@ -40,14 +31,12 @@ class GrabbableRigidbody : SaveableItem
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
         base.Start();
-        //EnablePhysics(true);
     }
 
     internal Vector3 oldEnemyPosition;
 
     public override void Update()
     {
-        OnUpdate?.Invoke();
         // hax
         fallTime = 1.0f;
         reachedFloorTarget = true;
@@ -143,7 +132,6 @@ class GrabbableRigidbody : SaveableItem
     public void OnCollision_ClientRpc(string objectTag, float rigidBodyMagnitude)
     {
         if (rb == null || rb.isKinematic) return;
-        OnCollision?.Invoke();
         if (itemAudio == null)
         {
             Plugin.Logger.LogWarning("ITEM AUDIO SOURCE DOESNT EXIST.");
@@ -160,12 +148,18 @@ class GrabbableRigidbody : SaveableItem
 
     public override void EquipItem()
     {
-        OnEquipItem?.Invoke();
         base.EquipItem();
         itemAudio.pitch = 1f;
         //set parent to null
         transform.parent = null;
+        EnablePhysics(false);
         if (IsOwner) net_Placed.Value = false;
+    }
+
+    public override void PocketItem()
+    {
+        base.PocketItem();
+        EnablePhysics(false);
     }
 
     public override void GrabItemFromEnemy(EnemyAI enemy)
@@ -188,17 +182,22 @@ class GrabbableRigidbody : SaveableItem
 
     public override void DiscardItem()
     {
-        OnDiscardItem?.Invoke();
+        if (!net_Placed.Value) EnablePhysics(true);
         base.DiscardItem();
     }
 
     public override void InteractItem()
     {
         base.InteractItem();
-        OnInteractLocal?.Invoke();
         itemAudio.pitch = 1f;
     }
 
+    public override void OnPlaceObject()
+    {
+        base.OnPlaceObject();
+        EnableColliders(true);
+        rb.isKinematic = true;
+    }
 
     public override void FallWithCurve()
     {

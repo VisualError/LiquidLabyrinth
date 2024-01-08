@@ -1,4 +1,4 @@
-# Ryokune-Liquid_Labyrinth
+# Ryokune-Liquid_Labyrinth [v47]
 
 [![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/VisualError/LiquidLabyrinth/build.yml?style=for-the-badge&logo=github)](https://github.com/VisualError/LiquidLabyrinth/actions/workflows/build.yml)
 [![Thunderstore Version](https://img.shields.io/thunderstore/v/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)
@@ -7,13 +7,12 @@
 ## This mod is currently on EARLY-ALPHA, please report any bugs & feel free to give suggestions on the [GitHub](https://github.com/VisualError/LiquidLabyrinth) or Message me on Discord: ryokune
 
 ### Known bugs
-- Scan not working on bottles
 - Toast bugged
 - Bottle physics gets disabled when ship is moving (Needed to do this because the bottle would bug out of existence)
 - Revive could be bugged.
 
 ### Planning
-- Liquid API support
+- Liquid API
 - Procedurally generated liquids
 - Newly added dungeons
 - Tools to inspect and change liquid properties
@@ -52,3 +51,17 @@
 ## Contributors
 
 - [@Lordfirespeed](https://github.com/Lordfirespeed)
+
+
+## Credits (Discord users):
+- Tomb (@tombvali): For helping with blender stuff & creating the texture for the bottles :)
+- Lordfirespeed (@lordfirespeed): RPC Help and project restructuring
+- Willis (@willis81808): Structure suggestion for the Liquid API structure (still in development.)
+
+## Bug finders:
+- Voilet (@violetkitty.vs) 
+- SweetBale (@sweetbale) 
+- anon (@anon.jpg) 
+- Leader (@www.warframe.com) 
+- mixed race couple? good! (@mixed race couple? good!#3792)
+- If you would like to get added/removed to this list PM me on discord: @Ryokune

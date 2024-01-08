@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Liquid API (For Developers)
+- Custom Dungeon additions.
+- Tools for liquid identification
+- Lore
+- Circulation system
 
 ### Added
 
@@ -15,20 +20,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-## Version [v0.0.6-v0.0.7]
+## Version [0.0.8]
+### Added
+- Heads now rotate to players if it hears any speak.
+- Build badges in readme.md
+
+### Fixed
+- Item popup notification.
+- Placing items in the cupboard fixed for v47
+
+### Removed
+- Set as shop items config.
+
+## Version [0.0.7]
 ### Fixed
 - Fixed RPC Error from head item
-- Position syncing issues
-- 
 
 ### Changed
-- Lowered Spawn rates
 - Changed liquid material.
 - Head texture should now have a bottom texture.
 
 ### Added
 - Added shake to make bottle liquid glow
 - Liquids should now float and glow when listening to boomboxes
+
+## Version [0.0.6]
+### Fixed
+- Position syncing issues
+
+### Changed
+- Lowered Spawn rates
 
 ## Version [0.0.5]
 ### Fixed

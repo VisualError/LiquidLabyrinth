@@ -28,7 +28,6 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> RevivePlayer;
     internal ConfigEntry<bool> NoGravityInOrbit;
     internal ConfigEntry<bool> IsGrabbableToEnemies;
-    internal ConfigEntry<bool> SetAsShopItems;
     internal ConfigEntry<bool> UseCustomNameList;
     internal ConfigEntry<int> BottleRarity;
     internal ConfigEntry<bool> spawnRandomEnemy;
@@ -143,7 +142,6 @@ internal class Plugin : BaseUnityPlugin
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
-        SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[host only] all registered items will become available to store.");
         BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity [Needs game restart.]");
         spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] Allow all enemy types to be spawned when revive fail");
         UseCustomNameList = Config.Bind("Fun", "Use Custom Name List", false, "Set to true if you wan't to use your custom name list for bottles.");
@@ -183,16 +181,6 @@ internal class Plugin : BaseUnityPlugin
                         Value = IsGrabbableToEnemies.Value,
                         Text = IsGrabbableToEnemies.Description.Description,
                         OnValueChanged = (self, value) => IsGrabbableToEnemies.Value = value
-                    },
-                    new ToggleComponent
-                    {
-                        Value = SetAsShopItems.Value,
-                        Text = SetAsShopItems.Description.Description,
-                        OnValueChanged = (self, value) =>
-                        {
-                            SetAsShopItems.Value = value;
-                            Logger.LogWarning($"set value: {SetAsShopItems.Value}");
-                        }
                     },
                     new ToggleComponent
                     {

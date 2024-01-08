@@ -11,7 +11,7 @@ using LiquidLabyrinth.ItemData;
 namespace LiquidLabyrinth.ItemHelpers;
 
 
-class HeadItem : Throwable
+class HeadItem : Throwable, INoiseListener
 {
 
     private string? _localtooltip;
@@ -66,6 +66,16 @@ class HeadItem : Throwable
         // Using local variables because network object hasn't been spawned on the server yet. These values will be useful for OnNetworkSpawn
     }
 
+    public override void FixedUpdate()
+    {
+        base.FixedUpdate();
+        if (lastNoisePosition.HasValue)
+        {
+            Vector3 directionToNoise = (lastNoisePosition.Value - transform.position).normalized;
+            rb.AddForce(directionToNoise * 1.5f, ForceMode.Acceleration);
+        }
+    }
+
     public override void Update()
     {
         base.Update();
@@ -116,5 +126,15 @@ class HeadItem : Throwable
         base.PocketItem();
         Equiped = false;
     }
-
+    Vector3? lastNoisePosition;
+    public void DetectNoise(Vector3 noisePosition, float noiseLoudness, int timesPlayedInOneSpot, int noiseID)
+    {
+        if (noiseID != 75)
+        {
+            lastNoisePosition = null;
+            return;
+        }
+        lastNoisePosition = noisePosition;
+        Plugin.Logger.LogWarning($"heard at {noisePosition}");
+    }
 }
