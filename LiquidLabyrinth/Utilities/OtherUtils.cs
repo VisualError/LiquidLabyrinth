@@ -6,6 +6,10 @@ namespace LiquidLabyrinth.Utilities;
 
 internal class OtherUtils
 {
+    internal static float MapRange(float lower, float upper, float lower1, float upper1, float value)
+    {
+        return lower1 + (value - lower) * (upper1 - lower1) / (upper - lower);
+    }
     static List<string> ConvertToMixedCase(List<string> inputList)
     {
         List<string> resultList = new List<string>();

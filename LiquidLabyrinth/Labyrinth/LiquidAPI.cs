@@ -17,10 +17,13 @@ using Unity.Netcode;
 namespace LiquidLabyrinth.Labyrinth;
 
 // TODO: Add API support.
+// TODO: I DONT KNOW WHAT I AM DOING. MAKE SURE YOU KNOW WHAT YOURE DOING AND FIX WHAT YOU KNOW YOU DONT KNOW YOU'RE DOING WHEN YOU TOUCH THIS FILE. THANKS - PAST ME.
+
+// Credits: Most code in this API is based off on People Playground's way of handling liquids. Will change if needed.
 public class LiquidAPI
 {
     [Serializable]
-    public abstract class Liquid : NetworkBehaviour
+    public abstract class Liquid
     {
         public virtual string? Name { get => GetType().Name; }
         internal string? ModName { set; get; }
@@ -31,20 +34,21 @@ public class LiquidAPI
         public abstract void OnEnterLimb(LimbBehaviour limb);
         public abstract void OnEnterContainer(Container container);
         public abstract void OnExitContainer(Container container);
-        public virtual void OnContainerBreak(RaycastHit hit)
+        public virtual void OnContainerBreak(Container container, RaycastHit hit)
         {
             if (hit.transform.TryGetComponent(out PlayerControllerB player))
             {
                 player.DamagePlayer(10, true, true, CauseOfDeath.Unknown, 0, false, default);
             }
         }
-        public virtual void OnContainerBreak() { }
-        public virtual void OnUpdate() { }
-        public GameObject? Container { get; set; }
+        public virtual void OnContainerBreak(Container container) { }
+        public virtual void OnUpdate(Container container) { }
+        public Container? Container { get; set; }
     }
 
 
-    public static Dictionary<string, Liquid> Registry = new Dictionary<string, Liquid>();
+    public static readonly Dictionary<string, Liquid> Registry = new Dictionary<string, Liquid>();
+    public static readonly HashSet<Liquid> LiquidSet = new HashSet<Liquid>();
 
     public static Liquid RandomLiquid
     {
@@ -92,7 +96,7 @@ public class LiquidAPI
         }
     }
 
-    public static Liquid RegisterLiquid(Liquid liquid)
+    public static Liquid? RegisterLiquid(Liquid liquid)
     {
         var callingAssembly = Assembly.GetCallingAssembly();
         var modDLL = callingAssembly.GetName().Name;
@@ -100,11 +104,12 @@ public class LiquidAPI
 
         if (Registry.ContainsKey(liquid.ShortID))
         {
-            Plugin.Logger.LogError($"Liquid {liquid.Name} from {liquid.ModName} already exists in your modded liquid registry! Try a different name!");
-            return liquid;
+            Plugin.Logger.LogError($"Liquid Registry Error: Liquid \"{liquid.Name}\" ({liquid.ShortID}) from {liquid.ModName} already exists in your modded liquid registry! Liquid Registry failed!");
+            return null;
         }
         Registry.Add(liquid.ShortID, liquid);
-        Plugin.Logger.LogWarning($"Registered {liquid.Name} from {liquid.ModName} ({liquid.ShortID})");
+        LiquidSet.Add(liquid);
+        Plugin.Logger.LogInfo($"Registered {liquid.Name} from {liquid.ModName} ({liquid.ShortID})");
         return liquid;
     }
 }

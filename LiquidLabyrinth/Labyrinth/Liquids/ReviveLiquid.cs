@@ -11,11 +11,12 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
 {
     internal class ReviveLiquid : LiquidAPI.Liquid
     {
-        public override Color Color { get => Random.ColorHSV(); }
+        public override Color Color { get => Color.green; }
+        public override string? Name { get => "Revive Liquid"; }
 
         public override void OnEnterContainer(Container container)
         {
-            throw new NotImplementedException();
+            Plugin.Logger.LogWarning($"{Name} Entering container");
         }
 
         public override void OnEnterLimb(LimbBehaviour limb)
@@ -25,12 +26,12 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
 
         public override void OnExitContainer(Container container)
         {
-            throw new NotImplementedException();
+            Plugin.Logger.LogWarning($"{Name} Exiting container");
         }
 
-        public override void OnContainerBreak(RaycastHit hit)
+        public override void OnContainerBreak(Container container, RaycastHit hit)
         {
-            base.OnContainerBreak(hit);
+            base.OnContainerBreak(container, hit);
             if (hit.transform.TryGetComponent(out DeadBodyInfo deadBodyInfo))
             {
                 PlayerControllerB player = deadBodyInfo.playerScript;

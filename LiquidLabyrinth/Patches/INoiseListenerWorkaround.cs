@@ -6,6 +6,7 @@ namespace LiquidLabyrinth.Patches
     [HarmonyPatch(typeof(RoundManager))]
     internal class INoiseListenerWorkaround
     {
+        // fr so bad.
         [HarmonyPatch(nameof(RoundManager.PlayAudibleNoise))]
         [HarmonyPostfix]
         static void PlayAudibleNoisePatch(RoundManager __instance,Vector3 noisePosition,ref float noiseRange, float noiseLoudness, int timesPlayedInSameSpot, bool noiseIsInsideClosedShip, int noiseID)

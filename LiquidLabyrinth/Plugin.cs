@@ -34,6 +34,7 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> spawnRandomEnemy;
     internal ConfigEntry<string> customNameList;
     internal Dictionary<string, EnemyType> enemyTypes = new();
+    internal List<GameObject> cursed = new List<GameObject>();
 
     internal Dictionary<Type, int> SaveableItemDict = new();
     internal int SliderValue;
@@ -167,7 +168,9 @@ internal class Plugin : BaseUnityPlugin
         // Liquid API
         LiquidAPI.RegisterLiquid(new ExplosiveLiquid());
         LiquidAPI.RegisterLiquid(new ReviveLiquid());
-        
+        LiquidAPI.RegisterLiquid(new Funny());
+        LiquidAPI.RegisterLiquid(new TestLiquid());
+
 
         // Lethal settings.
         try

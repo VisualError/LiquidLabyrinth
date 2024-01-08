@@ -5,6 +5,12 @@ using UnityEngine;
 using Unity.Netcode.Components;
 using GameNetcodeStuff;
 using LiquidLabyrinth.ItemHelpers;
+using System.Collections.Generic;
+using System.Linq;
+using LiquidLabyrinth.Labyrinth;
+using System.ComponentModel;
+using LiquidLabyrinth.Labyrinth.Monobehaviours;
+using Container = LiquidLabyrinth.Labyrinth.Monobehaviours.Container;
 
 namespace LiquidLabyrinth.Patches;
 
@@ -36,8 +42,6 @@ internal class PlayerControllerBPatch
     {
         if(placeObject is GrabbableRigidbody rigid && rigid != null) 
         {
-            placeObject.EnablePhysics(false);
-            rigid.EnableColliders(true);
             if (__instance.IsOwner) rigid.PlayDropSFX();
         }
     }
@@ -47,24 +51,42 @@ internal class PlayerControllerBPatch
     {
         if (placeObject is GrabbableRigidbody rigid && rigid != null)
         {
+            Plugin.Logger.LogWarning("place got called in prefix");
             if (__instance.IsOwner) rigid.net_Placed.Value = true;
         }
     }
 
+
+    // TODO: Use string builder :P
     [HarmonyPatch(typeof(GrabbableObject), nameof(GrabbableObject.SetScrapValue))]
     [HarmonyPostfix]
     static void SetScrapValue(GrabbableObject __instance)
     {
-        if ((NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) return;
+        //if ((NetworkManager.Singleton.IsServer || NetworkManager.Singleton.IsHost)) return;
         ScanNodeProperties componentInChildren = __instance.gameObject.GetComponentInChildren<ScanNodeProperties>();
         if (componentInChildren != null && __instance is PotionBottle bottle && bottle != null)
         {
-            if (bottle.Liquid == null)
+            Plugin.Logger.LogWarning("HI!");
+            if (bottle.containerbehaviour.LiquidDistribution == null)
             {
                 Plugin.Logger.LogWarning("Screams");
                 return;
             }
-            componentInChildren.subText += $"\n{bottle.Liquid.Name}";
+            int index = 0;
+            int previousPercentage = 0;
+            foreach(KeyValuePair<LiquidAPI.Liquid, Container.RefFill> liquid in bottle.containerbehaviour.LiquidDistribution)
+            {
+                float num1 = liquid.Value.Raw / liquid.Key.Container.TotalLiquidAmount;
+                int percentage = (index == bottle.containerbehaviour.LiquidDistribution.Count - 1) ? (100 - previousPercentage) : Mathf.RoundToInt(num1 * 100f);
+                string percentageString = "";
+                if(percentage > 0)
+                {
+                    percentageString = $"{percentage}%";
+                    previousPercentage += percentage;
+                    index++;
+                }
+                componentInChildren.subText += $"\n{liquid.Key.Name}: {percentageString}";
+            }
         }
     }
 }

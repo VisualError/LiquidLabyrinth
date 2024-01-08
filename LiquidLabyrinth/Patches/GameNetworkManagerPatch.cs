@@ -7,6 +7,7 @@ namespace LiquidLabyrinth.Patches;
 [HarmonyPatch(typeof(GameNetworkManager))]
 class GameNetworkManagerPatch
 {
+    // I should remove this but i feel like i shouldnt
     [HarmonyPatch("SaveItemsInShip")]
     static void Postfix()
     {

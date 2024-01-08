@@ -4,6 +4,7 @@ using GameNetcodeStuff;
 using LiquidLabyrinth.Enums;
 using LiquidLabyrinth.ItemData;
 using LiquidLabyrinth.Labyrinth;
+using LiquidLabyrinth.Labyrinth.Monobehaviours;
 using LiquidLabyrinth.Utilities;
 using LiquidLabyrinth.Utilities.MonoBehaviours;
 using System;
@@ -34,10 +35,6 @@ internal class PotionBottle : Throwable, INoiseListener
     public float Recovery = 1f;
     private float _localFill = -1f;
     private string _localLiquidId = "";
-    float wobbleAmountX;
-    float wobbleAmountZ;
-    float wobbleAmountToAddX;
-    float wobbleAmountToAddZ;
     float maxEmission = 10f;
     float pulse;
     float time = 0.5f;
@@ -55,9 +52,11 @@ internal class PotionBottle : Throwable, INoiseListener
     public AudioClip glassBreakSFX;
     public AudioClip liquidShakeSFX;
 
-    public LiquidAPI.Liquid Liquid;
     [Space(3f)]
     [Header("Liquid Properties")]
+
+    internal BottleContainerBehaviour containerbehaviour;
+
     public bool BreakBottle = false;
     public bool IsShaking = false;
     private NetworkVariable<float> net_emission = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
@@ -85,12 +84,15 @@ internal class PotionBottle : Throwable, INoiseListener
         }
     }
 
+    void Awake()
+    {
+        containerbehaviour = GetComponentInChildren<BottleContainerBehaviour>();
+    }
+
     public override void EquipItem()
     {
         base.EquipItem();
         playerHeldBy.equippedUsableItemQE = true;
-        wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
-        wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
         if (IsOwner)
         {
             net_playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
@@ -180,8 +182,6 @@ internal class PotionBottle : Throwable, INoiseListener
         itemAudio.PlayOneShot(subclip);
         RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
         CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
-        wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
-        wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
         while (Holding)
         {
             yield return new WaitForSeconds(0.05f);
@@ -196,8 +196,6 @@ internal class PotionBottle : Throwable, INoiseListener
                 itemAudio.PlayOneShot(subclip);
                 RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
                 CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
-                wobbleAmountToAddX = wobbleAmountToAddX + Random.Range(1f, 10f);
-                wobbleAmountToAddZ = wobbleAmountToAddZ + Random.Range(1f, 10f);
             }
         }
         yield break;
@@ -283,12 +281,16 @@ internal class PotionBottle : Throwable, INoiseListener
             }
             if (net_Fill.Value == -1)
             {
-                net_Fill.Value = Random.Range(0f, 1f);
+                net_Fill.Value = Random.Range(containerbehaviour.LowerLimit, containerbehaviour.UpperLimit);
                 Plugin.Logger.LogWarning("Bottle fill is -1, setting random value.");
             }
-            if(Liquid != null)
+            if (!_localLiquidId.IsNullOrWhiteSpace())
             {
-                net_LiquidColor.Value = Liquid.Color;
+                net_LiquidID.Value = _localLiquidId;
+            }
+            else
+            {
+                net_LiquidID.Value = LiquidAPI.RandomLiquid.ShortID;
             }
         }
         // ^ This part above only runs on server to sync initialization.
@@ -296,37 +298,36 @@ internal class PotionBottle : Throwable, INoiseListener
         {
             playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
         }
-        // Sync to all clients.
         nodeProperties.headerText = net_Name.Value.ToString();
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_BottleColor.Value.g, net_BottleColor.Value.r, net_BottleColor.Value.b);
-        if (Liquid != null)
+        if (containerbehaviour != null)
         {
-            Plugin.Logger.LogWarning($"GOT: {Liquid.Name} from {Liquid.ModName}");
-            Liquid.Container = transform.Find("Liquid").gameObject;
-            rend = Liquid.Container.GetComponent<MeshRenderer>();
-            nodeProperties.subText += $"\nLiquid(s): {Liquid.Name}";
+            /*float range1 = Random.Range(containerbehaviour.LowerLimit, containerbehaviour.UpperLimit/2);
+            float range2 = Random.Range(containerbehaviour.LowerLimit, range1);
+            float range3 = Random.Range(containerbehaviour.LowerLimit, range2);*/
+            containerbehaviour.AddLiquid(LiquidAPI.GetByID(net_LiquidID.Value.ToString()), net_Fill.Value);
+            /*containerbehaviour.AddLiquid(LiquidAPI.RandomLiquid, range2);
+            containerbehaviour.AddLiquid(LiquidAPI.RandomLiquid, range3); // its time for pain
+            containerbehaviour.AddLiquid(LiquidAPI.RandomLiquid, Random.Range(containerbehaviour.LowerLimit, range3));*/
+            if (containerbehaviour.LiquidContainer == null)
+            {
+                Plugin.Logger.LogWarning("Liquid container is null, i may scream at your console now.");
+                return;
+            }
+            if (containerbehaviour.LiquidContainer.renderComponent == null)
+            {
+                Plugin.Logger.LogWarning("Render component is null, i may scream at your console now.");
+                return;
+            }
+            rend = containerbehaviour.LiquidContainer.renderComponent;
             rend.material.SetFloat("_Emission", net_emission.Value);
-            rend.material.SetFloat("_Fill", net_Fill.Value);
-            if (net_LiquidColor.Value == null) return;
-            Color _lighterColor = new Color(Mathf.Clamp01(net_LiquidColor.Value.r + 1f),
-                Mathf.Clamp01(net_LiquidColor.Value.g + 1f),
-                Mathf.Clamp01(net_LiquidColor.Value.b + 1f));
-            rend.material.SetColor("_SurfaceColor", _lighterColor);
-            rend.material.SetColor("_LiquidColor", net_LiquidColor.Value);
-            light.color = net_LiquidColor.Value;
         }
         else
         {
             Plugin.Logger.LogError("Liquid is null on client; This shouldn't happen!");
         }
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
-    }
-
-    void Awake()
-    {
-        LiquidAPI.Liquid _Liquid = LiquidAPI.RandomLiquid;
-        Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
-        Liquid.ModName = _Liquid.ModName;
+        SetScrapValue(scrapValue);
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -337,33 +338,19 @@ internal class PotionBottle : Throwable, INoiseListener
         Plugin.Logger.LogWarning("load called");
         if (Data is BottleItemData itemData)
         {
-            if (itemData == null) itemData = new("BottleType", 0f, Liquid.ShortID);
+            if (itemData == null) itemData = new("BottleType", 0f, LiquidAPI.RandomLiquid.ShortID);
             GetComponentInChildren<ScanNodeProperties>().headerText = itemData.name;
-            _localFill = (itemData.fill);
-            _localLiquidId = itemData.LiquidID;
+            _localFill = itemData.fill;
 
             if (!itemData.LiquidID.IsNullOrWhiteSpace())
             {
+                _localLiquidId = itemData.LiquidID;
                 Plugin.Logger.LogWarning($"GOT ID:{itemData.LiquidID}");
-                LiquidAPI.Liquid _Liquid = LiquidAPI.GetByID(itemData.LiquidID);
-                if(gameObject.TryGetComponent(out LiquidAPI.Liquid liq))
-                {
-                    Plugin.Logger.LogWarning("Found Liquid class, destroying and creating new one");
-                    Destroy(liq);
-                }
-                Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
-                Liquid.ModName = _Liquid.ModName;
-                if (Liquid == null)
-                {
-                    Plugin.Logger.LogError("Liquid is null! This shouldn't happen!!");
-                }
             }
             else
             {
-                // cursed as fuck.
-                LiquidAPI.Liquid _Liquid = (LiquidAPI.Liquid)LiquidAPI.RandomLiquid;
-                Liquid = gameObject.AddComponent(_Liquid.GetType()) as LiquidAPI.Liquid;
-                Liquid.ModName = _Liquid.ModName;
+                LiquidAPI.Liquid _Liquid = LiquidAPI.RandomLiquid;
+                _localLiquidId = _Liquid.ShortID;
             }
         }
         else
@@ -374,7 +361,7 @@ internal class PotionBottle : Throwable, INoiseListener
         
     public override int GetItemDataToSave()
     {
-        Data = new BottleItemData(net_Name.Value.ToString(), net_Fill.Value, Liquid.ShortID);
+        Data = new BottleItemData(net_Name.Value.ToString(), net_Fill.Value, net_LiquidID.Value.ToString());
         return base.GetItemDataToSave();
     }
 
@@ -392,18 +379,7 @@ internal class PotionBottle : Throwable, INoiseListener
 
     void DoPotionEffect()
     {
-        // REVIVE TEST:
-        var size = Physics.SphereCastNonAlloc(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 3f, _potionBreakHits, 2f, 1572872);
-        if (size == 0)
-        {
-            Liquid.OnContainerBreak();
-        }
-
-        foreach (RaycastHit hit in _potionBreakHits)
-        {
-            if (hit.transform == null) return;
-            Liquid.OnContainerBreak(hit);
-        }
+        // stub for now
     }
     
     [ClientRpc]
@@ -451,6 +427,7 @@ internal class PotionBottle : Throwable, INoiseListener
     public override void Update()
     {
         base.Update();
+        light.color = containerbehaviour.LiquidContainer.Color;
         float distance = Vector3.Distance(lastNoisePosition, transform.position);
         Vector3 directionToNoise = (new Vector3(0, lastNoisePosition.y, 0) - new Vector3(0, transform.position.y, 0)).normalized;
         if (net_isFloating.Value)
@@ -473,7 +450,7 @@ internal class PotionBottle : Throwable, INoiseListener
         }
         float lerpFactor = 0.2f * Time.deltaTime;
         rend.material.SetFloat("_Emission", net_emission.Value);
-        rend.material.SetFloat("_Fill", net_Fill.Value);
+        //rend.material.SetFloat("_Fill", net_Fill.Value);
         light.intensity = net_emission.Value;
         if (itemUsedUp) return;
         if ((IsShaking || net_isFloating.Value) && IsOwner)
@@ -504,43 +481,14 @@ internal class PotionBottle : Throwable, INoiseListener
             if (IsOwner)
             {
                 net_Fill.Value = 0f;
-                rend.material.SetFloat("_Fill", 0f);
+                //rend.material.SetFloat("_Fill", 0f);
             }
             itemUsedUp = true;
             return;
         }
-        Wobble();
     }
 
-    private void Wobble()
-    {
-        time += Time.deltaTime;
-        // decrease wobble over time
-        wobbleAmountToAddX = Mathf.Lerp(wobbleAmountToAddX, 0, Time.deltaTime * (Recovery));
-        wobbleAmountToAddZ = Mathf.Lerp(wobbleAmountToAddZ, 0, Time.deltaTime * (Recovery));
 
-        // make a sine wave of the decreasing wobble
-        pulse = 2 * Mathf.PI * WobbleSpeed;
-        wobbleAmountX = wobbleAmountToAddX * Mathf.Sin(pulse * time);
-        wobbleAmountZ = wobbleAmountToAddZ * Mathf.Sin(pulse * time);
-
-        // send it to the shader
-        rend.material.SetFloat("_WobbleX", wobbleAmountX);
-        rend.material.SetFloat("_WobbleZ", wobbleAmountZ);
-
-        // velocity
-        velocity = (lastPos - transform.position) / Time.deltaTime;
-        angularVelocity = transform.rotation.eulerAngles - lastRot;
-
-
-        // add clamped velocity to wobble
-        wobbleAmountToAddX += Mathf.Clamp((velocity.x + (angularVelocity.z * 0.2f)) * MaxWobble, -MaxWobble, MaxWobble);
-        wobbleAmountToAddZ += Mathf.Clamp((velocity.z + (angularVelocity.x * 0.2f)) * MaxWobble, -MaxWobble, MaxWobble);
-
-        // keep last position
-        lastPos = transform.position;
-        lastRot = transform.rotation.eulerAngles;
-    }
 
     // lmao.
     Vector3 lastNoisePosition;

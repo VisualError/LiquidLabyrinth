@@ -184,7 +184,8 @@ class GrabbableRigidbody : SaveableItem
 
     public override void DiscardItem()
     {
-        EnablePhysics(true);
+        Plugin.Logger.LogWarning("discard item called");
+        if(!net_Placed.Value) EnablePhysics(true);
         base.DiscardItem();
     }
 
@@ -204,9 +205,17 @@ class GrabbableRigidbody : SaveableItem
     {
         // stub, we do not need this.
     }
+    public override void OnPlaceObject()
+    {
+        base.OnPlaceObject();
+        Plugin.Logger.LogWarning("place object called");
+        EnableColliders(true);
+        rb.isKinematic = true;
+    }
 
     public new void EnablePhysics(bool enable)
     {
+        Plugin.Logger.LogWarning($"enable physics called:  {enable}");
         EnableColliders(enable);
         rb.isKinematic = !enable;
     }

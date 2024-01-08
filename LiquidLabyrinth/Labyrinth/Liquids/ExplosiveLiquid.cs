@@ -9,12 +9,12 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
 {
     internal class ExplosiveLiquid : LiquidAPI.Liquid
     {
-        public override Color Color { get => Color.white; }
-        public override string? Name { get => "ExplosiveLiquid"; }
+        public override Color Color { get => Color.red; }
+        public override string? Name { get => "Explosive Liquid"; }
 
         public override void OnEnterContainer(Container container)
         {
-            throw new NotImplementedException();
+            Plugin.Logger.LogWarning($"{Name} Entering container");
         }
 
         public override void OnEnterLimb(LimbBehaviour limb)
@@ -24,22 +24,21 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
 
         public override void OnExitContainer(Container container)
         {
-            throw new NotImplementedException();
+            Plugin.Logger.LogWarning($"{Name} Exiting container");
         }
 
-        public override void OnContainerBreak()
+        public override void OnContainerBreak(Container container)
         {
-            base.OnContainerBreak();
+            base.OnContainerBreak(container);
+            Container = container;
             SpawnExplosion_ClientRpc();
         }
 
         [ClientRpc]
         void SpawnExplosion_ClientRpc()
         {
-            Plugin.Logger.LogWarning("client 1");
             if (Container == null) return;
-            Plugin.Logger.LogWarning("client 2");
-            Landmine.SpawnExplosion(Container.transform.position + Vector3.up, true, 5.7f, 6.4f);
+            Landmine.SpawnExplosion(Container.gameObject.transform.position + Vector3.up, true, 5.7f, 6.4f);
         }
     }
 }

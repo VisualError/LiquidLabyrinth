@@ -62,6 +62,15 @@
     <Reference Include="Unity.Collections">
       <HintPath>$(LETHAL_COMPANY_DIR)/Lethal Company_Data/Managed/Unity.Collections.dll</HintPath>
     </Reference>
+	 <Reference Include="Facepunch Transport for Netcode for GameObjects">
+	  <HintPath>$(LETHAL_COMPANY_DIR)/Lethal Company_Data/Managed/Facepunch Transport for Netcode for GameObjects.dll</HintPath>
+	 </Reference>
+	 <Reference Include="Facepunch.Steamworks.Win64">
+	  <HintPath>$(LETHAL_COMPANY_DIR)/Lethal Company_Data/Managed/Facepunch.Steamworks.Win64.dll</HintPath>
+	 </Reference>
+	 <Reference Include="Unity.Netcode.Components">
+	  <HintPath>$(LETHAL_COMPANY_DIR)/Lethal Company_Data/Managed/Unity.Netcode.Components.dll</HintPath>
+	 </Reference>
     <Reference Include="LethalSettings">
       <HintPath>$(TEST_PROFILE_DIR)/BepInEx/plugins/willis81808-LethalSettings/LethalSettings.dll</HintPath>
     </Reference>
@@ -89,12 +98,6 @@
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Unity.Netcode.Components">
-      <HintPath>D:\SteamLibrary\steamapps\common\Lethal Company\Lethal Company_Data\Managed\Unity.Netcode.Components.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
