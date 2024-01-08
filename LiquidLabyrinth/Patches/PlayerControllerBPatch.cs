@@ -36,8 +36,6 @@ internal class PlayerControllerBPatch
     {
         if(placeObject is GrabbableRigidbody rigid && rigid != null) 
         {
-            placeObject.EnablePhysics(false);
-            rigid.EnableColliders(true);
             if (__instance.IsOwner) rigid.PlayDropSFX();
         }
     }
