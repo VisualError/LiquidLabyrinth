@@ -1,5 +1,9 @@
 # Ryokune-Liquid_Labyrinth
 
+[![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/VisualError/LiquidLabyrinth/build.yml?style=for-the-badge&logo=github)](https://github.com/VisualError/LiquidLabyrinth/actions/workflows/build.yml)
+[![Thunderstore Version](https://img.shields.io/thunderstore/v/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)
+[![Thunderstore Downloads](https://img.shields.io/thunderstore/dt/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)
+
 ## This mod is currently on EARLY-ALPHA, please report any bugs & feel free to give suggestions on the [GitHub](https://github.com/VisualError/LiquidLabyrinth) or Message me on Discord: ryokune
 
 ### Known bugs
