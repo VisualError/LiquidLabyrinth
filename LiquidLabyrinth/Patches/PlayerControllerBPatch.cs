@@ -2,14 +2,10 @@
 using LiquidLabyrinth.Utilities;
 using Unity.Netcode;
 using UnityEngine;
-using Unity.Netcode.Components;
 using GameNetcodeStuff;
 using LiquidLabyrinth.ItemHelpers;
 using System.Collections.Generic;
-using System.Linq;
 using LiquidLabyrinth.Labyrinth;
-using System.ComponentModel;
-using LiquidLabyrinth.Labyrinth.Monobehaviours;
 using Container = LiquidLabyrinth.Labyrinth.Monobehaviours.Container;
 
 namespace LiquidLabyrinth.Patches;
@@ -51,7 +47,6 @@ internal class PlayerControllerBPatch
     {
         if (placeObject is GrabbableRigidbody rigid && rigid != null)
         {
-            Plugin.Logger.LogWarning("place got called in prefix");
             if (__instance.IsOwner) rigid.net_Placed.Value = true;
         }
     }
@@ -66,7 +61,6 @@ internal class PlayerControllerBPatch
         ScanNodeProperties componentInChildren = __instance.gameObject.GetComponentInChildren<ScanNodeProperties>();
         if (componentInChildren != null && __instance is PotionBottle bottle && bottle != null)
         {
-            Plugin.Logger.LogWarning("HI!");
             if (bottle.containerbehaviour.LiquidDistribution == null)
             {
                 Plugin.Logger.LogWarning("Screams");
@@ -76,7 +70,7 @@ internal class PlayerControllerBPatch
             int previousPercentage = 0;
             foreach(KeyValuePair<LiquidAPI.Liquid, Container.RefFill> liquid in bottle.containerbehaviour.LiquidDistribution)
             {
-                float num1 = liquid.Value.Raw / liquid.Key.Container.TotalLiquidAmount;
+                float num1 = liquid.Value.Raw / bottle.containerbehaviour.TotalLiquidAmount;
                 int percentage = (index == bottle.containerbehaviour.LiquidDistribution.Count - 1) ? (100 - previousPercentage) : Mathf.RoundToInt(num1 * 100f);
                 string percentageString = "";
                 if(percentage > 0)

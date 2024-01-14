@@ -13,13 +13,14 @@ using System.Text;
 using LiquidLabyrinth.Labyrinth.Monobehaviours;
 using GameNetcodeStuff;
 using Unity.Netcode;
+using LiquidLabyrinth.Labyrinth.NetworkBehaviours;
 
 namespace LiquidLabyrinth.Labyrinth;
 
 // TODO: Add API support.
 // TODO: I DONT KNOW WHAT I AM DOING. MAKE SURE YOU KNOW WHAT YOURE DOING AND FIX WHAT YOU KNOW YOU DONT KNOW YOU'RE DOING WHEN YOU TOUCH THIS FILE. THANKS - PAST ME.
 
-// Credits: Most code in this API is based off on People Playground's way of handling liquids. Will change if needed.
+// Credits: Most of the code in this API is based off on People Playground's way of handling liquids. Will change if needed.
 public class LiquidAPI
 {
     [Serializable]
@@ -43,7 +44,6 @@ public class LiquidAPI
         }
         public virtual void OnContainerBreak(Container container) { }
         public virtual void OnUpdate(Container container) { }
-        public Container? Container { get; set; }
     }
 
 
@@ -68,7 +68,7 @@ public class LiquidAPI
     public static Liquid? GetByID(string ID)
     {
         Liquid? liquid = Registry.TryGetValue(ID, out Liquid value) ? value : null;
-        if(liquid is null)
+        if(liquid == null)
         {
             Plugin.Logger.LogError($"There is no Liquid registered with the ID: {ID}");
         }

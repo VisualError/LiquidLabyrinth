@@ -71,8 +71,8 @@
 	 <Reference Include="Unity.Netcode.Components">
 	  <HintPath>$(LETHAL_COMPANY_DIR)/Lethal Company_Data/Managed/Unity.Netcode.Components.dll</HintPath>
 	 </Reference>
-    <Reference Include="LethalSettings">
-      <HintPath>$(TEST_PROFILE_DIR)/BepInEx/plugins/willis81808-LethalSettings/LethalSettings.dll</HintPath>
+    <Reference Include="LethalConfig">
+      <HintPath>$(TEST_PROFILE_DIR)/BepInEx/plugins/AinaVT-LethalConfig/LethalConfig/LethalConfig.dll</HintPath>
     </Reference>
     <Reference Include="LethalLib">
       <HintPath>$(TEST_PROFILE_DIR)/BepInEx/plugins/Evaisa-LethalLib/LethalLib/LethalLib.dll</HintPath>
@@ -81,8 +81,8 @@
 
   <ItemGroup Condition="$(CI) == 'true'">
     <PackageReference Include="LethalCompany.GameLibs.Steam" Version="45.0.2-alpha.1" />
-    <Reference Include="LethalSettings">
-      <HintPath>$(SolutionDir)lib/willis81808-LethalSettings/LethalSettings.dll</HintPath>
+    <Reference Include="LethalConfig">
+      <HintPath>$(SolutionDir)lib/AinaVT-LethalConfig/LethalConfig/LethalConfig.dll</HintPath>
     </Reference>
     <Reference Include="LethalLib">
       <HintPath>$(SolutionDir)lib/Evaisa-LethalLib/plugins/LethalLib/LethalLib.dll</HintPath>
@@ -108,9 +108,9 @@
     <MakeDir Directories="../lib" Condition="!Exists('../lib')" />
   </Target>
   
-  <Target Name="FetchLethalSettings" DependsOnTargets="EnsureLibDir">
-    <Exec Command="wget https://thunderstore.io/package/download/willis81808/LethalSettings/1.3.0/ -O ../lib/willis81808-LethalSettings.zip" />
-    <Exec Command="unzip -o ../lib/willis81808-LethalSettings.zip LethalSettings.dll -d ../lib/willis81808-LethalSettings" />
+  <Target Name="FetchLethalConfig" DependsOnTargets="EnsureLibDir">
+    <Exec Command="wget https://thunderstore.io/package/download/AinaVT/LethalConfig/1.3.3/ -O ../lib/AinaVT-LethalConfig.zip" />
+    <Exec Command="unzip -o ../lib/AinaVT-LethalConfig.zip LethalConfig.dll -d ../lib/AinaVT-LethalConfig" />
   </Target>
 
   <Target Name="FetchLethalLib" DependsOnTargets="EnsureLibDir">
@@ -120,7 +120,7 @@
   </Target>
   
   <Target Name="FetchDependencies">
-    <CallTarget Targets="FetchLethalSettings;FetchLethalLib" />
+    <CallTarget Targets="FetchLethalConfig;FetchLethalLib" />
   </Target>
 
   <Target Name="SetPluginVersion" BeforeTargets="AddGeneratedFile" DependsOnTargets="MinVer">

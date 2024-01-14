@@ -1,4 +1,5 @@
-﻿using GameNetcodeStuff;
+﻿using DunGen;
+using GameNetcodeStuff;
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -9,9 +10,6 @@ namespace LiquidLabyrinth.ItemHelpers;
 class Throwable : GrabbableRigidbody
 {
 
-    // EVENTS:
-    public event UnityAction OnThrowItem;
-
     public PlayerControllerB playerThrownBy;
     public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public BoxCollider collider;
@@ -20,11 +18,12 @@ class Throwable : GrabbableRigidbody
     public bool LMBToThrow = true;
     public bool QToThrow = false;
     public bool EToThrow = false;
-    Quaternion oldRotation;
+    private NetworkVariable<Vector3> localPosition = new NetworkVariable<Vector3>(default, NetworkVariableReadPermission.Everyone,NetworkVariableWritePermission.Owner);
+    private NetworkVariable<Quaternion> oldRotation = new NetworkVariable<Quaternion>(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<Vector3> throwDir = new NetworkVariable<Vector3>(Vector3.zero, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> isKinematic = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
-    public float throwForce = 10f;
+    public float throwForce = 20f;
 
     public override void Start()
     {
@@ -59,12 +58,27 @@ class Throwable : GrabbableRigidbody
     [ServerRpc]
     void Throw_ServerRpc(Vector3 throwDir)
     {
+        GetComponent<NetworkObject>().ChangeOwnership(NetworkManager.Singleton.ConnectedClientsList[0].ClientId); // Change item ownership to host.
+        oldRotation.Value = gameObject.transform.rotation;
         Throw_ClientRpc(throwDir);
     }
     [ClientRpc]
     void Throw_ClientRpc(Vector3 throwDir)
     {
         StartCoroutine(Throw(throwDir));
+    }
+
+    public IEnumerator Throw(Vector3 throwDir)
+    {
+        //TODO: Throwing animation.
+        if (!StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase) yield break;
+        yield return new WaitUntil(() => !Holding);
+        if (GameNetworkManager.Instance.localPlayerController == playerThrownBy) playerThrownBy.DiscardHeldObject(); // would be funny to see what would happen if this desyncs. it probably wont.
+        rb.isKinematic = false;
+        if (IsOwner) isThrown.Value = true;
+        Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
+        rb.AddForce(throwDir * throwForce, ForceMode.Impulse);
+        yield break;
     }
 
     public override void Update()
@@ -98,9 +112,9 @@ class Throwable : GrabbableRigidbody
     {
         base.SetControlTipsForItem();
         string[] allLines;
-        allLines = new string[]{
+        allLines = [
             "Throw [Click]"
-        };
+        ];
         if (IsOwner)
         {
             HUDManager.Instance.ChangeControlTipMultiple(allLines, true, itemProperties);
@@ -119,12 +133,12 @@ class Throwable : GrabbableRigidbody
             isKinematic.Value = rb.isKinematic;
             if (isThrown.Value)
             {
-                transform.rotation = oldRotation;
+                gameObject.transform.rotation = oldRotation.Value;
                 if (rb.velocity.magnitude > 0.1f)
                 {
                     Quaternion targetRotation = Quaternion.LookRotation(rb.velocity);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 4f);
-                    oldRotation = transform.rotation;
+                    gameObject.transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 4f);
+                    oldRotation.Value = gameObject.transform.rotation;
                 }
             }
         }
@@ -139,34 +153,7 @@ class Throwable : GrabbableRigidbody
         }
     }
 
-
-    public IEnumerator Throw(Vector3 throwDir)
-    {
-        //TODO: Throwing animation.
-        //previouslyHeld.twoHanded = true;
-        if (!StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase) yield break;
-        yield return new WaitUntil(() => !Holding);
-        if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
-        playerThrownBy.inSpecialInteractAnimation = true;
-        playerThrownBy.isClimbingLadder = false;
-        playerThrownBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
-        playerThrownBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
-        yield return new WaitForSeconds(.25f);
-        OnThrowItem?.Invoke();
-        oldRotation = gameObject.transform.rotation;
-        if (IsOwner) playerThrownBy.DiscardHeldObject();
-        rb.isKinematic = false;
-        if(IsOwner) isThrown.Value = true;
-        transform.Rotate(itemProperties.rotationOffset); // so it no fucky. it look goody
-
-        Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
-        rb.AddForce(throwDir * throwForce, ForceMode.Impulse);
-        if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
-        playerThrownBy.inSpecialInteractAnimation = false;
-        yield break;
-    }
-
-    public override void OnCollisionEnter(Collision collision)
+    protected override void OnCollisionEnter(Collision collision)
     {
         base.OnCollisionEnter(collision);
         if(IsOwner) isThrown.Value = false;

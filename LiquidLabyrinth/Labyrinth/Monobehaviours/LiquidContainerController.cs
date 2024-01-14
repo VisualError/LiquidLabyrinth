@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
-using static UnityEngine.UIElements.StylePropertyAnimationSystem;
 using Color = UnityEngine.Color;
 using Vector3 = UnityEngine.Vector3;
-using Vector4 = UnityEngine.Vector4;
 
 namespace LiquidLabyrinth.Labyrinth.Monobehaviours
 {
@@ -76,8 +74,8 @@ namespace LiquidLabyrinth.Labyrinth.Monobehaviours
             //hehehehheheheehehehehheeeeeeeeee
             time += Time.deltaTime;
             // decrease wobble over time
-            wobbleAmountToAddX = Mathf.Lerp(wobbleAmountToAddX, 0, Time.deltaTime * (Recovery));
-            wobbleAmountToAddZ = Mathf.Lerp(wobbleAmountToAddZ, 0, Time.deltaTime * (Recovery));
+            wobbleAmountToAddX = Mathf.Lerp(wobbleAmountToAddX, 0, Time.deltaTime * Recovery);
+            wobbleAmountToAddZ = Mathf.Lerp(wobbleAmountToAddZ, 0, Time.deltaTime * Recovery);
 
             // make a sine wave of the decreasing wobble
             pulse = 2 * Mathf.PI * WobbleSpeed;

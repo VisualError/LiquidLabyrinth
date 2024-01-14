@@ -21,16 +21,17 @@ class GrabbableRigidbody : SaveableItem
     public float gravity = 9.8f;
     internal Rigidbody rb;
     internal AudioSource itemAudio;
-    public float itemMass = 1f;
+    public float terminalVelocity;
     public override void Start()
     {
         rb = GetComponent<Rigidbody>();
         itemAudio = GetComponent<AudioSource>();
         if (rb == null || itemAudio == null) return;
         rb.useGravity = false;
-        rb.mass = itemMass;
+        rb.mass = (itemProperties.weight*105f)-105f; // zeekers why do you calculate mass this way.
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
+        terminalVelocity = MathF.Sqrt(2 * rb.mass * 9.81f);
         base.Start();
     }
 
@@ -100,7 +101,6 @@ class GrabbableRigidbody : SaveableItem
             radarIcon.position = transform.position;
         }
     }
-
     public override void OnNetworkSpawn()
     {
         base.OnNetworkSpawn();
@@ -112,7 +112,7 @@ class GrabbableRigidbody : SaveableItem
         rb = GetComponent<Rigidbody>();
     }
 
-    public virtual void OnCollisionEnter(Collision collision)
+    protected virtual void OnCollisionEnter(Collision collision)
     {
         if (IsClient)
         {

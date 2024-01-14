@@ -6,6 +6,8 @@ namespace LiquidLabyrinth.Patches
     [HarmonyPatch(typeof(RoundManager))]
     internal class INoiseListenerWorkaround
     {
+
+        static Collider[] itemColliderResults = new Collider[20];
         // fr so bad.
         [HarmonyPatch(nameof(RoundManager.PlayAudibleNoise))]
         [HarmonyPostfix]
@@ -15,15 +17,15 @@ namespace LiquidLabyrinth.Patches
             {
                 noiseRange /= 2f;
             }
-            int num = Physics.OverlapSphereNonAlloc(noisePosition, noiseRange, __instance.tempColliderResults, 64);
+            int num = Physics.OverlapSphereNonAlloc(noisePosition, noiseRange, itemColliderResults, 64);
             for (int i = 0; i < num; i++)
             {
                 INoiseListener noiseListener;
-                if (__instance.tempColliderResults[i].transform.TryGetComponent(out noiseListener))
+                if (itemColliderResults[i].transform.TryGetComponent(out noiseListener))
                 {
                     if (noiseIsInsideClosedShip)
                     {
-                        GrabbableObject component = __instance.tempColliderResults[i].gameObject.GetComponent<GrabbableObject>();
+                        GrabbableObject component = itemColliderResults[i].gameObject.GetComponent<GrabbableObject>();
                         if ((component == null || !component.isInShipRoom) && noiseLoudness < 0.9f)
                         {
                             break;

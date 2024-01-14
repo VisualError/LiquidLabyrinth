@@ -32,6 +32,7 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
         public override void OnContainerBreak(Container container, RaycastHit hit)
         {
             base.OnContainerBreak(container, hit);
+            // Should only be ran by the server.
             if (hit.transform.TryGetComponent(out DeadBodyInfo deadBodyInfo))
             {
                 PlayerControllerB player = deadBodyInfo.playerScript;
@@ -59,7 +60,7 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
         EnemyType SelectEnemyType()
         {
             if (!Plugin.Instance.spawnRandomEnemy.Value)
-                return Plugin.Instance.enemyTypes["Masked"];
+                return Plugin.Instance.enemyTypes[typeof(MaskedPlayerEnemy)];
 
             return Plugin.Instance.enemyTypes.ElementAt(Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
         }

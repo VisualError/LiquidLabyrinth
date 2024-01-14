@@ -11,7 +11,7 @@ namespace LiquidLabyrinth.Labyrinth.LiquidAPI_Patches
         [HarmonyPostfix]
         static void SteamMatchmaking_OnLobbyCreated(GameNetworkManager __instance, Result result, ref Lobby lobby)
         {
-            lobby.SetData("a", "b"); // todo JSON utility.
+            //lobby.SetData("a", "b"); // todo JSON utility.
         }
     }
 }

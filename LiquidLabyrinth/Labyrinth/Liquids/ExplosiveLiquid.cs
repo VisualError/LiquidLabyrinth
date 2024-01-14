@@ -12,6 +12,8 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
         public override Color Color { get => Color.red; }
         public override string? Name { get => "Explosive Liquid"; }
 
+        GameObject? _container;
+
         public override void OnEnterContainer(Container container)
         {
             Plugin.Logger.LogWarning($"{Name} Entering container");
@@ -30,15 +32,15 @@ namespace LiquidLabyrinth.Labyrinth.Liquids
         public override void OnContainerBreak(Container container)
         {
             base.OnContainerBreak(container);
-            Container = container;
+            _container = container.gameObject;
             SpawnExplosion_ClientRpc();
         }
 
         [ClientRpc]
         void SpawnExplosion_ClientRpc()
         {
-            if (Container == null) return;
-            Landmine.SpawnExplosion(Container.gameObject.transform.position + Vector3.up, true, 5.7f, 6.4f);
+            if (_container == null) return;
+            Landmine.SpawnExplosion(_container.transform.position + Vector3.up, true, 5.7f, 6.4f);
         }
     }
 }

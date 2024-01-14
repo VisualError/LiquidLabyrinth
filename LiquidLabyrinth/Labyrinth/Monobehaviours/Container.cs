@@ -76,7 +76,6 @@ namespace LiquidLabyrinth.Labyrinth.Monobehaviours
             }
             else
             {
-                liquid.Container = this;
                 LiquidDistribution.Add(liquid, new RefFill(num));
                 OnLiquidEnter(liquid);
             }
@@ -107,6 +106,24 @@ namespace LiquidLabyrinth.Labyrinth.Monobehaviours
             return num;
         }
 
+        public void Drain(float amount)
+        {
+            if (amount <= 1E-45f)
+            {
+                return;
+            }
+            if (LiquidDistribution.Count == 0)
+            {
+                return;
+            }
+            float num = amount / LiquidDistribution.Count;
+            foreach (KeyValuePair<LiquidAPI.Liquid, RefFill> keyValuePair in LiquidDistribution)
+            {
+                RemoveLiquid(keyValuePair.Key, num);
+            }
+            deleteEmptyEntries = true;
+        }
+
         public void DeleteEmptyLiquidEntries()
         {
             deleteEmptyEntries = false;
@@ -129,19 +146,10 @@ namespace LiquidLabyrinth.Labyrinth.Monobehaviours
         {
             liquid.OnEnterContainer(this);
         }
-
-        // TODO: Don't do this lmao.
-        void OnDestroy()
-        {
-            foreach(KeyValuePair<LiquidAPI.Liquid, RefFill> liquid in LiquidDistribution)
-            {
-                OnContainerBreak(liquid.Key);
-            }
-        }
         RaycastHit[] _potionBreakHits = new RaycastHit[20];
-        protected virtual void OnContainerBreak(LiquidAPI.Liquid liquid)
+        public virtual void OnContainerBreak(LiquidAPI.Liquid liquid)
         {
-            // REVIVE TEST:
+            // Break test.
             var size = Physics.SphereCastNonAlloc(new Ray(gameObject.transform.position + gameObject.transform.up * 2f, gameObject.transform.forward), 3f, _potionBreakHits, 2f, 1572872);
             if (size == 0)
             {

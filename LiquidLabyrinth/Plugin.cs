@@ -2,8 +2,9 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
-using LethalSettings.UI;
-using LethalSettings.UI.Components;
+/*using LethalSettings.UI;
+using LethalSettings.UI.Components;*/
+using LethalConfig;
 using LiquidLabyrinth.Utilities;
 using System.Collections.Generic;
 using System.Reflection;
@@ -13,12 +14,15 @@ using System;
 using LiquidLabyrinth.Labyrinth;
 using System.Linq;
 using LiquidLabyrinth.Labyrinth.Liquids;
+using LethalConfig.ConfigItems.Options;
+using LethalConfig.ConfigItems;
+using LiquidLabyrinth.ItemHelpers;
 
 namespace LiquidLabyrinth;
 
 [BepInPlugin(MyPluginInfo.PLUGIN_GUID, MyPluginInfo.PLUGIN_NAME, MyPluginInfo.PLUGIN_VERSION)]
 [BepInDependency("evaisa.lethallib", "0.10.1")]
-[BepInDependency("com.willis.lc.lethalsettings", "1.3.0")]
+[BepInDependency("ainavt.lc.lethalconfig", "1.3.3")]
 [BepInProcess("Lethal Company.exe")]
 internal class Plugin : BaseUnityPlugin
 {
@@ -28,12 +32,9 @@ internal class Plugin : BaseUnityPlugin
     internal ConfigEntry<bool> RevivePlayer;
     internal ConfigEntry<bool> NoGravityInOrbit;
     internal ConfigEntry<bool> IsGrabbableToEnemies;
-    internal ConfigEntry<bool> SetAsShopItems;
-    internal ConfigEntry<bool> UseCustomNameList;
     internal ConfigEntry<int> BottleRarity;
     internal ConfigEntry<bool> spawnRandomEnemy;
-    internal ConfigEntry<string> customNameList;
-    internal Dictionary<string, EnemyType> enemyTypes = new();
+    internal Dictionary<Type, EnemyType> enemyTypes = new();
     internal List<GameObject> cursed = new List<GameObject>();
 
     internal Dictionary<Type, int> SaveableItemDict = new();
@@ -151,12 +152,8 @@ internal class Plugin : BaseUnityPlugin
         RevivePlayer = Config.Bind("General", "Toggle Bottle Revive", true, "Bottle revive functionality, for testing purposes");
         NoGravityInOrbit = Config.Bind("General", "Toggle Bottle Gravity In Orbit", true, "If Bottle Gravity is enabled/disabled during orbit.");
         IsGrabbableToEnemies = Config.Bind("General", "Toggle Enemy Pickups", false, "if enemies can pick up objects made by the mod");
-        SetAsShopItems = Config.Bind("Shop", "Set items as buyable", false, "[host only] all registered items will become available to store.");
         BottleRarity = Config.Bind("Scraps", "Bottle Rarity", 60, "Set bottle rarity [Needs game restart.]");
         spawnRandomEnemy = Config.Bind("Fun", "Spawn random enemy on revive", false, "[alpha only] Allow all enemy types to be spawned when revive fail");
-        UseCustomNameList = Config.Bind("Fun", "Use Custom Name List", false, "Set to true if you wan't to use your custom name list for bottles.");
-        customNameList = Config.Bind("Fun", "Custom Bottle Name List", "", "Custom name list of your bottles. use (\",\") as a seperator.");
-        customNameList.Value = "";
         SliderValue = BottleRarity.Value;
         foreach (var name in scientificNames)
         {
@@ -171,108 +168,35 @@ internal class Plugin : BaseUnityPlugin
         LiquidAPI.RegisterLiquid(new Funny());
         LiquidAPI.RegisterLiquid(new TestLiquid());
 
+        NoGravityInOrbit.SettingChanged += NoGravityInOrbit_SettingChanged;
 
-        // Lethal settings.
+        // Lethal Config.
         try
         {
-            ModMenu.RegisterMod(new ModMenu.ModSettingsConfig
+            var RaritySlider = new IntSliderConfigItem(BottleRarity, new IntSliderOptions
             {
-                Name = MyPluginInfo.PLUGIN_NAME,
-                Id = MyPluginInfo.PLUGIN_GUID,
-                Description = "Liquid Labyrinth: Mysterious liquids",
-                MenuComponents =
-                [
-                    new ToggleComponent
-                    {
-                        Value = RevivePlayer.Value,
-                        Text = RevivePlayer.Description.Description,
-                        OnValueChanged = (self, value) => RevivePlayer.Value = value
-                    },
-                    new ToggleComponent
-                    {
-                        Value = NoGravityInOrbit.Value,
-                        Text = NoGravityInOrbit.Description.Description,
-                        OnValueChanged = (self, value) => NoGravityInOrbit.Value = value
-                    },
-                    new ToggleComponent
-                    {
-                        Value = IsGrabbableToEnemies.Value,
-                        Text = IsGrabbableToEnemies.Description.Description,
-                        OnValueChanged = (self, value) => IsGrabbableToEnemies.Value = value
-                    },
-                    new ToggleComponent
-                    {
-                        Value = SetAsShopItems.Value,
-                        Text = SetAsShopItems.Description.Description,
-                        OnValueChanged = (self, value) =>
-                        {
-                            SetAsShopItems.Value = value;
-                            Logger.LogWarning($"set value: {SetAsShopItems.Value}");
-                        }
-                    },
-                    new ToggleComponent
-                    {
-                        Value = spawnRandomEnemy.Value, 
-                        Text = spawnRandomEnemy.Description.Description,
-                        OnValueChanged = (self, value) => spawnRandomEnemy.Value = value
-                    },
-                    new HorizontalComponent
-                    {
-                        Children = new MenuComponent[]
-                        {
-                            new SliderComponent
-                            {
-                                WholeNumbers = true,
-                                MaxValue = 1000,
-                                MinValue = 0,
-                                Text = BottleRarity.Description.Description,
-                                Value = BottleRarity.Value,
-                                ShowValue = true,
-                                OnValueChanged = (self, value) => BottleRarity.Value = (int)value
-                            }
-                        }
-                    },
-                    new ToggleComponent
-                    {
-                        Value = UseCustomNameList.Value,
-                        Text = UseCustomNameList.Description.Description,
-                        OnValueChanged = (self, value) => UseCustomNameList.Value = value
-                    },
-                    new HorizontalComponent
-                    {
-                        ChildAlignment = TextAnchor.MiddleCenter,
-                        Children = new MenuComponent[]
-                        {
-                            new InputComponent
-                            {
-                                Placeholder="[currently doesn't work]",
-                                Value=customNameList.Value,
-                                OnValueChanged = (self, value) => nameList = value
-                            },
-                            new ButtonComponent
-                            {
-                                Text = "Add Custom Name",
-                                OnClick = (self) => customNameList.Value += $",{nameList}" // this might break thiingsssss
-                            }
-                        }
-                    },
-                    new VerticalComponent
-                    {
-                        Children =
-                        [
-                            new LabelComponent
-                            {
-                                Text=string.Join("\n",customNameList.Value.Split(","))
-                            }
-                        ]
-                    }
-                ]
-            }); // TODO: Dynamically add components using reflection on bepinex configs;
+                Min = 0,
+                Max = 10000,
+                RequiresRestart = true,
+            });
+            LethalConfigManager.AddConfigItem(RaritySlider);
+            LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(NoGravityInOrbit, false));
+            LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(IsGrabbableToEnemies, false));
+            LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(RevivePlayer, false));
+            LethalConfigManager.AddConfigItem(new BoolCheckBoxConfigItem(spawnRandomEnemy, false));
         }
         catch(System.Exception err)
         {
-            Logger.LogWarning("Couldn't load LethalSettings for Configs!");
+            Logger.LogWarning("Couldn't load LethalConfig for Configs!");
             Logger.LogError(err);
+        }
+    }
+    public void NoGravityInOrbit_SettingChanged(object sender, EventArgs e)
+    {
+        foreach (GrabbableRigidbody grab in GameObject.FindObjectsByType<GrabbableRigidbody>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+        {
+            if (!NoGravityInOrbit.Value) return;
+            grab.rb.AddForce(Vector3.up*0.1f, ForceMode.Impulse); // float!
         }
     }
 }

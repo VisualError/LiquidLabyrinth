@@ -25,19 +25,9 @@ internal class PotionBottle : Throwable, INoiseListener
 {
     private Renderer rend;
     [Header("Wobble Settings")]
-    Vector3 lastPos;
-    Vector3 velocity;
-    Vector3 lastRot;
-    Vector3 angularVelocity;
-    public float MaxWobble = 1f;
-    //private float MaxWobbleBase = 1f;
-    public float WobbleSpeed = 1f;
-    public float Recovery = 1f;
     private float _localFill = -1f;
     private string _localLiquidId = "";
     float maxEmission = 10f;
-    float pulse;
-    float time = 0.5f;
 
     [Space(3f)]
     [Header("Bottle Properties")]
@@ -59,6 +49,8 @@ internal class PotionBottle : Throwable, INoiseListener
 
     public bool BreakBottle = false;
     public bool IsShaking = false;
+    public int MaxHealth = 100;
+    private NetworkVariable<int> Health = new NetworkVariable<int>(100, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server); // This will be accessed by the server to determine whether or not to break the bottle. No need to network it. Maybe.
     private NetworkVariable<float> net_emission = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString128Bytes> net_Name = new NetworkVariable<FixedString128Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -154,7 +146,6 @@ internal class PotionBottle : Throwable, INoiseListener
             case BottleModes.Throw:
                 LMBToThrow = true;
                 playerThrownBy = playerHeldBy;
-                if (IsOwner && Random.Range(1, 100) <= 25) BreakBottle = true;
                 break;
             case BottleModes.Toast:
                 if (!buttonDown || !IsOwner) break;
@@ -368,18 +359,25 @@ internal class PotionBottle : Throwable, INoiseListener
     private static RaycastHit[] _potionBreakHits = new RaycastHit[20];
 
     [ServerRpc]
-    void HitGround_ServerRpc()
+    void BreakBottle_ServerRpc()
     {
-        Plugin.Logger.LogWarning("It hit da ground");
+        Plugin.Logger.LogWarning("It hit da ground.");
         
-        HitGround_ClientRpc();
+        HitGround_ClientRpc(); // This is where stuff shatters, ect.
         DoPotionEffect();
         Destroy(gameObject, .5f);
     }
 
     void DoPotionEffect()
     {
-        // stub for now
+        // Could be better to instantiate a liquid network object generated on runtime to handle these type of interactions.
+
+        // It would also be better if I could somehow connect puddle creation and bottle breaking, as in spillage behaviour.
+        // The effect chance percentage would depend on the puddle percentage from 0-100%. Not sure where i'll base the percentage on though.
+        foreach (KeyValuePair<LiquidAPI.Liquid, Container.RefFill> liquid in containerbehaviour.LiquidDistribution)
+        {
+            containerbehaviour.OnContainerBreak(liquid.Key);
+        }
     }
     
     [ClientRpc]
@@ -393,16 +391,37 @@ internal class PotionBottle : Throwable, INoiseListener
         audioSource.PlayOneShot(itemProperties.dropSFX, 1f);
     }
 
-    public override void OnCollisionEnter(Collision collision)
+    bool broken = false;
+    protected override void OnCollisionEnter(Collision collision)
     {
         LMBToThrow = false;
         if (rb.isKinematic) return;
-        if (isThrown.Value && BreakBottle)
+        float impactForce = rb.velocity.magnitude;
+        if(collision.rigidbody != null)
         {
-            HitGround_ServerRpc();
+            impactForce += collision.rigidbody.velocity.magnitude;
         }
-        // Call base function after doing logic, so isThrown isn't always set to false when checking.
+        if (IsServer || IsHost) DamageBottle(impactForce);
+        Plugin.Logger.LogWarning($"Health: {Health.Value}");
+        if (!broken && BreakBottle && IsOwner)
+        {
+            broken = true;
+            BreakBottle_ServerRpc();
+        }
+        // Call base method after doing logic, so isThrown isn't always set to false when checking.
         base.OnCollisionEnter(collision);
+    }
+
+    private void DamageBottle(float impactForce)
+    {
+        if (!(IsServer || IsHost))
+        {
+            Plugin.Logger.LogError("Client is trying to damage bottle, only the server should be allowed to do this!");
+            return;
+        }
+        float damage = Mathf.Min(Mathf.Max(impactForce * (impactForce - Health.Value / 100), 0), Health.Value);
+        Health.Value -= (int)damage;
+        BreakBottle = Health.Value <= 0;
     }
 
 
@@ -429,10 +448,10 @@ internal class PotionBottle : Throwable, INoiseListener
         base.Update();
         light.color = containerbehaviour.LiquidContainer.Color;
         float distance = Vector3.Distance(lastNoisePosition, transform.position);
-        Vector3 directionToNoise = (new Vector3(0, lastNoisePosition.y, 0) - new Vector3(0, transform.position.y, 0)).normalized;
+        Vector3 directionToNoise = (lastNoisePosition - transform.position).normalized;
         if (net_isFloating.Value)
         {
-            rb.AddForce(directionToNoise * 0.05f, ForceMode.VelocityChange);
+            rb.AddForce(directionToNoise * 0.005f, ForceMode.VelocityChange);
             Quaternion targetRotation = Random.rotation;
 
             // Calculate the difference between the current rotation and the target rotation
@@ -470,13 +489,13 @@ internal class PotionBottle : Throwable, INoiseListener
             elapsedTime = 0f;
             elapsedTime = 0f;
         } // i suck at maths btw.
-        MaxWobble = net_Fill.Value * 0.2f;
         if (IsOwner && playerHeldBy != null && net_mode.Value == BottleModes.Drink && Holding && net_isOpened.Value && playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2).normalizedTime > 1)
         {
-            net_Fill.Value = Mathf.Lerp(net_Fill.Value, 0f, Time.deltaTime * 0.5f);
+            containerbehaviour.Drain(Time.deltaTime);
+            net_Fill.Value = containerbehaviour.TotalLiquidAmount;
             Plugin.Logger.LogWarning($"Started drinking! ({net_Fill.Value})");
         }
-        if (net_Fill.Value <= 0.05) // fun
+/*        if (net_Fill.Value <= 0.05) // fun
         {
             if (IsOwner)
             {
@@ -485,7 +504,7 @@ internal class PotionBottle : Throwable, INoiseListener
             }
             itemUsedUp = true;
             return;
-        }
+        }*/
     }
 
 

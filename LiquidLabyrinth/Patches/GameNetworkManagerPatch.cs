@@ -1,5 +1,8 @@
 ﻿using HarmonyLib;
 using LiquidLabyrinth.ItemHelpers;
+using LiquidLabyrinth.Netcode;
+using LiquidLabyrinth.Utilities;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace LiquidLabyrinth.Patches;
@@ -24,5 +27,19 @@ class GameNetworkManagerPatch
                 //CoroutineHandler.Instance.NewCoroutine(SaveUtils.ProcessQueueAfterDelay<PotionBottle>(item.GetType(), 0.5f));
             }
         }
+    }
+
+    internal static GameObject? networkPrefab;
+    [HarmonyPatch(nameof(GameNetworkManager.Start))]
+    [HarmonyPrefix]
+    internal static void Init()
+    {
+        if (networkPrefab != null || AssetLoader.bundle == null)
+            return;
+
+        networkPrefab = (GameObject?)AssetLoader.assetsDictionary["assets/liquid labyrinth/netcode/liquidnetworkmanager.prefab"];
+        if (networkPrefab == null) return;
+        networkPrefab.AddComponent<LiquidNetworkManager>();
+        NetworkManager.Singleton.AddNetworkPrefab(networkPrefab);
     }
 }
