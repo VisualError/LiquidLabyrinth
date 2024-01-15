@@ -31,7 +31,7 @@ class GrabbableRigidbody : SaveableItem
         rb.mass = (itemProperties.weight*105f)-105f; // zeekers why do you calculate mass this way.
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
-        terminalVelocity = MathF.Sqrt(2 * rb.mass * 9.81f);
+        terminalVelocity = MathF.Sqrt(2 * rb.mass * gravity);
         base.Start();
     }
 

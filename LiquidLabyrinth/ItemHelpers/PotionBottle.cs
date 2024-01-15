@@ -54,7 +54,6 @@ internal class PotionBottle : Throwable, INoiseListener
     private NetworkVariable<float> net_emission = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString128Bytes> net_Name = new NetworkVariable<FixedString128Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<Color> net_BottleColor = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -85,19 +84,11 @@ internal class PotionBottle : Throwable, INoiseListener
     {
         base.EquipItem();
         playerHeldBy.equippedUsableItemQE = true;
-        if (IsOwner)
-        {
-            net_playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
-        }
     }
 
     public override void DiscardItem()
     {
         base.DiscardItem();
-        if (IsOwner)
-        {
-            net_playerHeldByInt.Value = -1;
-        }
     }
 
     public override void InteractItem()
@@ -250,7 +241,6 @@ internal class PotionBottle : Throwable, INoiseListener
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
         if (IsHost || IsServer)
         {
-            scrapValue = itemProperties.creditsWorth;
             net_CanRevivePlayer.Value = Plugin.Instance.RevivePlayer.Value;
             if (nodeProperties != null)
             {
@@ -285,10 +275,6 @@ internal class PotionBottle : Throwable, INoiseListener
             }
         }
         // ^ This part above only runs on server to sync initialization.
-        if (net_playerHeldByInt.Value != -1)
-        {
-            playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
-        }
         nodeProperties.headerText = net_Name.Value.ToString();
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_BottleColor.Value.g, net_BottleColor.Value.r, net_BottleColor.Value.b);
         if (containerbehaviour != null)
@@ -318,7 +304,6 @@ internal class PotionBottle : Throwable, INoiseListener
             Plugin.Logger.LogError("Liquid is null on client; This shouldn't happen!");
         }
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
-        SetScrapValue(scrapValue);
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -395,7 +380,11 @@ internal class PotionBottle : Throwable, INoiseListener
     protected override void OnCollisionEnter(Collision collision)
     {
         LMBToThrow = false;
-        if (rb.isKinematic) return;
+        if (rb.isKinematic || !StartOfRound.Instance.shipHasLanded)
+        {
+            base.OnCollisionEnter(collision);//run so it no fucky ok?
+            return;
+        }
         float impactForce = rb.velocity.magnitude;
         if(collision.rigidbody != null)
         {

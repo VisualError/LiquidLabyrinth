@@ -6,19 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Liquid API (For Developers)
+- Custom Dungeon additions.
+- Tools for liquid identification
+- Circulation system
+- Lore
 
-### Added
-
-### Removed
+## Version [0.0.9]
+### Fixed
+- Fixed bug where `players couldn't shake bottles if a player is already shaking one.`
+- Fixed bug where `bottle sell value would be zero for every moon.`
+- Fixed bottle `rarity` config not working.
+- Fixed bug where `bottles would sometimes phase out of existence (probably)`
 
 ### Changed
-
-### Fixed
+- Bottles now break if they collide with other objects at high speed `(still needs fine tweaking)`
+- Bottles value now range from `5` to `100` credits.
 
 ## Version [0.0.8]
 ### Added
 - Heads now rotate to players if it hears any speak.
+- Build badges in readme.md
 
+### Fixed
+- Item popup notification.
+- Placing items in the cupboard fixed for v47
+
+### Removed
+- Set as shop items config.
 
 ## Version [0.0.7]
 ### Fixed
@@ -76,4 +91,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Bottles`: Throwing, Drinking
 - Revive with bottle break (configurable)
 - Ingame config using LethalSettings
-

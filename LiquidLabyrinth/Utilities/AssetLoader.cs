@@ -32,7 +32,7 @@ internal class AssetLoader
             Plugin.Logger.LogInfo($"Added: {assetName} to assetDictionary");
             if (asset is Item item) // Only register items as items.
             {
-                int rarity = item.GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
+                int rarity = item.spawnPrefab.GetComponent<GrabbableObject>().GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
                 LethalLib.Modules.Items.RegisterScrap(item, rarity, LethalLib.Modules.Levels.LevelTypes.All);
                 Plugin.Logger.LogWarning($"Added Scrap Item: {assetName}");
                 if (item.spawnPrefab.TryGetComponent(out NetworkObject obj) && obj != null)
