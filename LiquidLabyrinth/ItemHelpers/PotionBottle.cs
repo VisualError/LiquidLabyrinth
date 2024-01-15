@@ -13,7 +13,7 @@ using System.Runtime.InteropServices.ComTypes;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
-using static UnityEngine.ParticleSystem.PlaybackState;
+using Random = UnityEngine.Random;
 using Vector3 = UnityEngine.Vector3;
 
 namespace LiquidLabyrinth.ItemHelpers;
@@ -61,7 +61,6 @@ class PotionBottle : Throwable, INoiseListener
     private NetworkVariable<float> net_emission = new NetworkVariable<float>(0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_CanRevivePlayer = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     private NetworkVariable<FixedString128Bytes> net_Name = new NetworkVariable<FixedString128Bytes>("BottleType", NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-    private NetworkVariable<int> net_playerHeldByInt = new NetworkVariable<int>(-1, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<float> net_Fill = new NetworkVariable<float>(-1f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<bool> net_isOpened = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     private NetworkVariable<Color> net_color = new NetworkVariable<Color>(Color.red, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
@@ -87,19 +86,11 @@ class PotionBottle : Throwable, INoiseListener
         playerHeldBy.equippedUsableItemQE = true;
         wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
         wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
-        if (IsOwner)
-        {
-            net_playerHeldByInt.Value = (int)playerHeldBy.playerClientId;
-        }
     }
 
     public override void DiscardItem()
     {
         base.DiscardItem();
-        if (IsOwner)
-        {
-            net_playerHeldByInt.Value = -1;
-        }
     }
 
     public override void InteractItem()
@@ -149,7 +140,8 @@ class PotionBottle : Throwable, INoiseListener
             case BottleModes.Throw:
                 LMBToThrow = true;
                 playerThrownBy = playerHeldBy;
-                if (IsOwner && UnityEngine.Random.Range(1, 100) <= 25) BreakBottle = true;
+                if(IsOwner) HUDManager.Instance.ClearControlTips();
+                if ((IsServer||IsHost) && Random.Range(1, 100) <= 25) BreakBottle = true; // Server OR Host check because i made throwing handled by the server instead of the client now.
                 break;
             case BottleModes.Toast:
                 if (!buttonDown || !IsOwner) break;
@@ -159,7 +151,7 @@ class PotionBottle : Throwable, INoiseListener
             case BottleModes.Shake:
                 IsShaking = buttonDown;
                 if (!buttonDown) break;
-                CoroutineHandler.Instance.NewCoroutine<PotionBottle>(ShakeBottle());
+                CoroutineHandler.Instance.NewCoroutine(this, ShakeBottle());
                 break;
         }
         base.ItemActivate(used, buttonDown);
@@ -167,28 +159,35 @@ class PotionBottle : Throwable, INoiseListener
 
     private IEnumerator ShakeBottle()
     {
+        // bad code
+        playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+        AnimatorStateInfo stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
+        float animationDuration = stateInfo.length;
+        float _start = Random.Range(0, liquidShakeSFX.length - animationDuration);
+        float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
+        AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
+        itemAudio.PlayOneShot(subclip);
+        RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
+        CoroutineHandler.Instance.NewCoroutine(this, itemAudio.FadeOut(1f));
         while (Holding)
         {
-            playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
-            AnimatorStateInfo stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
-            if (!stateInfo.IsName("ShakeItem"))
+            yield return new WaitForSeconds(0.05f);
+            stateInfo = playerHeldBy.playerBodyAnimator.GetCurrentAnimatorStateInfo(2);
+            if (stateInfo.IsName("ShakeItem") && stateInfo.normalizedTime > 0.76f)
             {
-                yield return null;
-                continue;
+                playerHeldBy.playerBodyAnimator.SetTrigger("shakeItem");
+                animationDuration = stateInfo.length;
+                _start = Random.Range(0, liquidShakeSFX.length - animationDuration);
+                _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
+                subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
+                itemAudio.PlayOneShot(subclip);
+                RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
+                CoroutineHandler.Instance.NewCoroutine(this, itemAudio.FadeOut(1f));
             }
-            float animationDuration = stateInfo.length;
-            float _start = UnityEngine.Random.Range(0, liquidShakeSFX.length - animationDuration);
-            float _stop = Mathf.Min(_start + animationDuration, liquidShakeSFX.length);
-            AudioClip subclip = liquidShakeSFX.MakeSubclip(_start, _stop);
-            itemAudio.PlayOneShot(subclip);
-            RoundManager.Instance.PlayAudibleNoise(transform.position, 4f, 0.5f, 2, false, 0);
-            CoroutineHandler.Instance.NewCoroutine<PotionBottle>(itemAudio.FadeOut(1f));
-            wobbleAmountToAddX = wobbleAmountToAddX + UnityEngine.Random.Range(1f, 10f);
-            wobbleAmountToAddZ = wobbleAmountToAddZ + UnityEngine.Random.Range(1f, 10f);
-            yield return new WaitForSeconds(animationDuration-0.35f);
         }
         yield break;
     }
+
 
     // this shit don't work.
     private Coroutine ToastCoroutine;
@@ -248,7 +247,6 @@ class PotionBottle : Throwable, INoiseListener
         ScanNodeProperties nodeProperties = GetComponentInChildren<ScanNodeProperties>();
         if (IsHost || IsServer)
         {
-            scrapValue = itemProperties.creditsWorth;
             net_CanRevivePlayer.Value = Plugin.Instance.RevivePlayer.Value;
             if (nodeProperties != null)
             {
@@ -259,7 +257,6 @@ class PotionBottle : Throwable, INoiseListener
                 }
                 bottleType = nodeProperties.headerText;
                 net_Name.Value = new FixedString128Bytes(nodeProperties.headerText);
-                nodeProperties.subText = $"Value: {itemProperties.creditsWorth}";
             }
             int NameHash = Math.Abs(nodeProperties.headerText.GetHashCode());
             float r = (NameHash * 16807) % 256 / 255f; // Pseudo-random number generator
@@ -281,14 +278,11 @@ class PotionBottle : Throwable, INoiseListener
             }
         }
         // ^ This part above only runs on server to sync initialization.
-        if (net_playerHeldByInt.Value != -1)
-        {
-            playerHeldBy = StartOfRound.Instance.allPlayerScripts[net_playerHeldByInt.Value];
-        }
         // Sync to all clients.
         nodeProperties.headerText = net_Name.Value.ToString();
         itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
         gameObject.GetComponent<MeshRenderer>().material.color = new Color(net_color.Value.g, net_color.Value.r, net_color.Value.b);
+        Liquid = gameObject.transform.Find("Liquid").gameObject;
         if (Liquid != null)
         {
             rend = Liquid.GetComponent<MeshRenderer>();
@@ -298,6 +292,7 @@ class PotionBottle : Throwable, INoiseListener
             rend.material.SetFloat("_Fill", net_Fill.Value);
         }
         light.color = net_color.Value;
+        itemAnimator.SetBool("CorkOpen", net_isOpened.Value);
     }
 
     public override void LoadItemSaveData(int saveData)
@@ -369,7 +364,7 @@ class PotionBottle : Throwable, INoiseListener
         if (player.deadBody == null) return;
             
             
-        if (25 >= UnityEngine.Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
+        if (25 >= Random.Range(1, 100)) // currently hard coded because im pissy as fuck.
         {
             Vector3 navMeshPosition = RoundManager.Instance.GetNavMeshPosition(position, default, 10f);
             ReviveAsEnemy(player, navMeshPosition);
@@ -384,7 +379,7 @@ class PotionBottle : Throwable, INoiseListener
         if (!Plugin.Instance.spawnRandomEnemy.Value)
             return Plugin.Instance.enemyTypes["Masked"];
 
-        return Plugin.Instance.enemyTypes.ElementAt(UnityEngine.Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
+        return Plugin.Instance.enemyTypes.ElementAt(Random.Range(0, Plugin.Instance.enemyTypes.Count)).Value;
     }
         
     void ReviveAsEnemy(PlayerControllerB player, Vector3 navMeshPosition)
@@ -409,7 +404,6 @@ class PotionBottle : Throwable, INoiseListener
     {
         if (!player.TryGet(out PlayerControllerB plr)) return;
         if (plr.deadBody == null) return;
-            
         PlayerUtils.RevivePlayer(plr, plr.deadBody, position);
         plr.deadBody.DeactivateBody(false);
     }
@@ -423,11 +417,16 @@ class PotionBottle : Throwable, INoiseListener
         plr.deadBody.DeactivateBody(false);
     }
 
-    public override void OnCollisionEnter(UnityEngine.Collision collision)
+    public override void OnCollisionEnter(Collision collision)
     {
         LMBToThrow = false;
         if (rb.isKinematic) return;
-        if (isThrown.Value && BreakBottle)
+        if(collision.rigidbody != null && collision.rigidbody.velocity.magnitude > terminalVelocity)
+        {
+            BreakBottle = true;
+            if(IsServer || IsHost) isThrown.Value = true;
+        }
+        if (isThrown.Value && BreakBottle && IsOwner)
         {
             HitGround_ServerRpc();
         }
@@ -457,11 +456,13 @@ class PotionBottle : Throwable, INoiseListener
     public override void Update()
     {
         base.Update();
+        Plugin.Logger.LogWarning($"IM HERE! {Vector3.Distance(transform.position, GameNetworkManager.Instance.localPlayerController.transform.position)}");
         if(Vector3.Distance(lastNoisePosition, transform.position) > 4.2f && IsServer)
         {
             net_isFloating.Value = false;
         }
         float lerpFactor = 0.2f * Time.deltaTime;
+        if (rend == null) return;
         rend.material.SetFloat("_Emission", net_emission.Value);
         rend.material.SetFloat("_Fill", net_Fill.Value);
         light.intensity = net_emission.Value;
@@ -471,13 +472,13 @@ class PotionBottle : Throwable, INoiseListener
             net_emission.Value = Mathf.Lerp(net_emission.Value, maxEmission, lerpFactor);
             shakeTime += Time.deltaTime; // increment the elapsed time
         }
-        else if (net_emission.Value > 0.001f)
+        else if (net_emission.Value > 0.001f && IsOwner)
         {
             float t = elapsedTime / shakeTime; // calculate the interpolation factor
             net_emission.Value = Mathf.Lerp(net_emission.Value, 0, t); // interpolate between start and end values
             elapsedTime += Time.deltaTime; // increment the elapsed time
         }
-        else
+        else if(IsOwner)
         {
             net_emission.Value = 0f;
             elapsedTime = 0f;

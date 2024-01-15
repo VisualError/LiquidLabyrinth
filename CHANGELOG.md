@@ -9,16 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Liquid API (For Developers)
 - Custom Dungeon additions.
 - Tools for liquid identification
-- Lore
 - Circulation system
+- Lore
 
-### Added
-
-### Removed
+## Version [0.0.9]
+### Fixed
+- Fixed bug where players couldn't shake bottles if a player is already shaking one.
+- Fixed bug where bottle sell value would be zero for every moon.
+- Fixed bottle `rarity` config not working.
+- Fixed bug where bottles would sometimes phase out of existence (probably)
 
 ### Changed
-
-### Fixed
+- Bottles now break if they collide with other objects at high speed (still needs fine tweaking)
+- Bottles value now range from `5` to `100` credits.
 
 ## Version [0.0.8]
 ### Added

@@ -8,10 +8,6 @@ namespace LiquidLabyrinth.ItemHelpers;
 
 class Throwable : GrabbableRigidbody
 {
-
-    // EVENTS:
-    public event UnityAction OnThrowItem;
-
     public PlayerControllerB playerThrownBy;
     public NetworkVariable<bool> isThrown = new NetworkVariable<bool>(false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
     public BoxCollider collider;
@@ -34,10 +30,15 @@ class Throwable : GrabbableRigidbody
         {
             rb.isKinematic = false;
             rb.AddForce(gameObject.transform.forward * 2f, ForceMode.Impulse);
-            isThrown.Value = true;
         }
         collider = GetComponent<BoxCollider>();
         headCollider = GetComponent<SphereCollider>();
+    }
+
+    public override void OnNetworkSpawn()
+    {
+        base.OnNetworkSpawn();
+        if(IsServer||IsHost) isThrown.Value = true;
     }
 
     public override void ItemActivate(bool used, bool buttonDown = true)
@@ -59,6 +60,7 @@ class Throwable : GrabbableRigidbody
     [ServerRpc]
     void Throw_ServerRpc(Vector3 throwDir)
     {
+        GetComponent<NetworkObject>().ChangeOwnership(NetworkManager.Singleton.ConnectedClientsList[0].ClientId); // Change item ownership to host.
         Throw_ClientRpc(throwDir);
     }
     [ClientRpc]
@@ -140,29 +142,32 @@ class Throwable : GrabbableRigidbody
     }
 
 
+    private void UpdateSpecialAnimationValue(PlayerControllerB player, bool set, Vector3 oldRot)
+    {
+        player.UpdateSpecialAnimationValue(set, (short)player.gameplayCamera.transform.localEulerAngles.y, 0f, set);
+        if(set) player.UpdatePlayerRotationFullServerRpc(oldRot); // yikes.
+        player.inSpecialInteractAnimation = set;
+        player.isClimbingLadder = false;
+    }
+
     public IEnumerator Throw(Vector3 throwDir)
     {
         //TODO: Throwing animation.
         //previouslyHeld.twoHanded = true;
         if (!StartOfRound.Instance.shipHasLanded && !StartOfRound.Instance.inShipPhase) yield break;
         yield return new WaitUntil(() => !Holding);
-        if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(true, 0, 0f, true);
-        playerThrownBy.inSpecialInteractAnimation = true;
-        playerThrownBy.isClimbingLadder = false;
+        var oldRot = playerThrownBy.transform.localEulerAngles;
+        if (playerThrownBy == GameNetworkManager.Instance.localPlayerController) UpdateSpecialAnimationValue(playerThrownBy, true, oldRot);
         playerThrownBy.playerBodyAnimator.ResetTrigger("SA_ChargeItem");
         playerThrownBy.playerBodyAnimator.SetTrigger("SA_ChargeItem");
         yield return new WaitForSeconds(.25f);
-        OnThrowItem?.Invoke();
         oldRotation = gameObject.transform.rotation;
-        if (IsOwner) playerThrownBy.DiscardHeldObject();
+        if (playerThrownBy == GameNetworkManager.Instance.localPlayerController) playerThrownBy.DiscardHeldObject();
         rb.isKinematic = false;
         if(IsOwner) isThrown.Value = true;
-        transform.Rotate(itemProperties.rotationOffset); // so it no fucky. it look goody
-
         Plugin.Logger.LogMessage($"Throwing object with velocity: {throwDir * throwForce}");
         rb.AddForce(throwDir * throwForce, ForceMode.Impulse);
-        if (IsOwner) playerThrownBy.UpdateSpecialAnimationValue(false, 0, 0f, false);
-        playerThrownBy.inSpecialInteractAnimation = false;
+        if (playerThrownBy == GameNetworkManager.Instance.localPlayerController) UpdateSpecialAnimationValue(playerThrownBy, false, oldRot);
         yield break;
     }
 

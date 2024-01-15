@@ -22,66 +22,40 @@ internal class CoroutineHandler : MonoBehaviour
             return instance;
         }
     }
-    private Dictionary<Type, Dictionary<Type, IEnumerator>> classesRunningCoroutines = new();
+    private Dictionary<object, Dictionary<Type, IEnumerator>> objectsRunningCoroutines = new();
     private Dictionary<Type, IEnumerator> runningCoroutines = new();
 
-    public IEnumerator NewCoroutine(Type classType,IEnumerator coroutine, bool stopWhenRunning = false)
+    public IEnumerator NewCoroutine(object instance, IEnumerator coroutine, bool stopWhenRunning = false)
     {
         Type coroutineType = coroutine.GetType();
-        if (classesRunningCoroutines.ContainsKey(classType) && classesRunningCoroutines[classType].ContainsKey(coroutineType))
+        if (objectsRunningCoroutines.ContainsKey(instance) && objectsRunningCoroutines[instance].ContainsKey(coroutineType))
         {
             if (stopWhenRunning)
             {
-                StopCoroutine(classesRunningCoroutines[classType][coroutineType]);
-                classesRunningCoroutines[classType].Remove(coroutineType);
+                StopCoroutine(objectsRunningCoroutines[instance][coroutineType]);
+                objectsRunningCoroutines[instance].Remove(coroutineType);
             }
             else
             {
-                Plugin.Logger.LogWarning($"Coroutine {coroutineType.Name} is already running for class {classType.Name}");
-                return classesRunningCoroutines[classType][coroutineType];
+                Plugin.Logger.LogWarning($"Coroutine {coroutineType.Name} is already running for {instance}");
+                return objectsRunningCoroutines[instance][coroutineType];
             }
         }
-        if (!classesRunningCoroutines.ContainsKey(classType))
+        if (!objectsRunningCoroutines.ContainsKey(instance))
         {
-            classesRunningCoroutines[classType] = new Dictionary<Type, IEnumerator>();
+            objectsRunningCoroutines[instance] = new Dictionary<Type, IEnumerator>();
         }
-        Plugin.Logger.LogWarning($"Starting coroutine {coroutineType.Name} for class {classType.Name}");
-        classesRunningCoroutines[classType][coroutineType] = coroutine;
-        StartCoroutine(ExecuteCoroutine(classType,coroutine));
-        return classesRunningCoroutines[classType][coroutineType];
+        Plugin.Logger.LogWarning($"Starting coroutine {coroutineType.Name} for {instance}");
+        objectsRunningCoroutines[instance][coroutineType] = coroutine;
+        StartCoroutine(ExecuteCoroutine(instance,coroutine));
+        return objectsRunningCoroutines[instance][coroutineType];
     }
 
-    public IEnumerator NewCoroutine<T>(IEnumerator coroutine, bool stopWhenRunning = false) where T : class
-    {
-        Type classType = typeof(T);
-        Type coroutineType = coroutine.GetType();
-        if (classesRunningCoroutines.ContainsKey(classType) && classesRunningCoroutines[classType].ContainsKey(coroutineType))
-        {
-            if (stopWhenRunning)
-            {
-                StopCoroutine(classesRunningCoroutines[classType][coroutineType]);
-                classesRunningCoroutines[classType].Remove(coroutineType);
-            }
-            else
-            {
-                Plugin.Logger.LogWarning($"Coroutine {coroutineType.Name} is already running for class {classType.Name}");
-                return classesRunningCoroutines[classType][coroutineType];
-            }
-        }
-        if (!classesRunningCoroutines.ContainsKey(classType))
-        {
-            classesRunningCoroutines[classType] = new Dictionary<Type, IEnumerator>();
-        }
-        classesRunningCoroutines[classType][coroutineType] = coroutine;
-        StartCoroutine(ExecuteCoroutine(classType, coroutine));
-        return classesRunningCoroutines[classType][coroutineType];
-    }
-
-    private IEnumerator ExecuteCoroutine<T>(T type,IEnumerator coroutine) where T : Type
+    private IEnumerator ExecuteCoroutine(object instance,IEnumerator coroutine)
     {
         yield return StartCoroutine(coroutine);
         // Remove the coroutine from the list when it's done
-        if(classesRunningCoroutines.TryGetValue(type, out Dictionary<Type, IEnumerator> value) && value != null)
+        if(objectsRunningCoroutines.TryGetValue(instance, out Dictionary<Type, IEnumerator> value) && value != null)
         {
             value.Remove(coroutine.GetType());
         }

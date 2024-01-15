@@ -31,13 +31,13 @@ internal class AssetLoader
             assetsDictionary.Add(assetName, asset);
             if (asset is Item item)
             {
-                int rarity = item.GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
+                int rarity = item.spawnPrefab.GetComponent<GrabbableObject>().GetType() != typeof(PotionBottle) ? 20 : Plugin.Instance.BottleRarity.Value; // need to turn this into a dictionary or something. this sucks lol
                 LethalLib.Modules.Items.RegisterScrap(item, rarity, LethalLib.Modules.Levels.LevelTypes.All);
                 Plugin.Logger.LogWarning($"Added Scrap Item: {assetName}");
                 if (item.spawnPrefab.TryGetComponent(out NetworkObject obj) && obj != null)
                 {
                     LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(item.spawnPrefab);
-                    Plugin.Logger.LogWarning($"NetworkPrefab for {assetName} loaded!");
+                    Plugin.Logger.LogWarning($"NetworkPrefab for {assetName} loaded! Rarity: {rarity}");
                 }
                 if (!items.Contains(item)) items.Add(item);
             }

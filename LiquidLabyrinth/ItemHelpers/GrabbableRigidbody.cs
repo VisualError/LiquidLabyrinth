@@ -21,6 +21,7 @@ class GrabbableRigidbody : SaveableItem
     internal Rigidbody rb;
     internal AudioSource itemAudio;
     public float itemMass = 1f;
+    public float terminalVelocity;
     public override void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -30,6 +31,7 @@ class GrabbableRigidbody : SaveableItem
         rb.mass = itemMass;
         // force some properties which might be missconfigured
         itemProperties.itemSpawnsOnGround = false;
+        terminalVelocity = MathF.Sqrt(2 * rb.mass * gravity);
         base.Start();
     }
 
