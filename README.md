@@ -1,4 +1,4 @@
-# Ryokune-Liquid_Labyrinth [v47]
+# Ryokune-Liquid_Labyrinth [v49]
 
 [![GitHub Build Status](https://img.shields.io/github/actions/workflow/status/VisualError/LiquidLabyrinth/build.yml?style=for-the-badge&logo=github)](https://github.com/VisualError/LiquidLabyrinth/actions/workflows/build.yml)
 [![Thunderstore Version](https://img.shields.io/thunderstore/v/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)

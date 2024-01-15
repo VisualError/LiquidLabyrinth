@@ -7,7 +7,7 @@ repository = "https://thunderstore.io"
 [package]
 namespace = "Ryokune"
 name = "Liquid_Labyrinth"
-description = "Do you seek exploration and alchemy? This mod calls for you.. [EARLY-ALPHA]"
+description = "v49 Do you seek exploration and alchemy? This mod calls for you.. [EARLY-ALPHA]"
 websiteUrl = "https://github.com/VisualError/LiquidLabyrinth"
 containsNsfwContent = false
 [package.dependencies]
