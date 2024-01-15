@@ -456,7 +456,6 @@ class PotionBottle : Throwable, INoiseListener
     public override void Update()
     {
         base.Update();
-        Plugin.Logger.LogWarning($"IM HERE! {Vector3.Distance(transform.position, GameNetworkManager.Instance.localPlayerController.transform.position)}");
         if(Vector3.Distance(lastNoisePosition, transform.position) > 4.2f && IsServer)
         {
             net_isFloating.Value = false;
