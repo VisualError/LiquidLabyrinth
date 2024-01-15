@@ -102,7 +102,7 @@
 
   <Target Name="FetchLethalLib" DependsOnTargets="EnsureLibDir">
     <Message Importance="high" Text="@(ReferencePathWithRefAssemblies)" />
-    <Exec Command="wget https://thunderstore.io/package/download/Evaisa/LethalLib/0.10.1/ -O ../lib/Evaisa-LethalLib.zip" />
+    <Exec Command="wget https://thunderstore.io/package/download/Evaisa/LethalLib/0.13.0/ -O ../lib/Evaisa-LethalLib.zip" />
     <Exec Command="unzip -o ../lib/Evaisa-LethalLib.zip plugins/LethalLib/LethalLib.dll -d ../lib/Evaisa-LethalLib" />
   </Target>
   

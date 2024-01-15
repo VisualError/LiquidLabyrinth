@@ -4,19 +4,12 @@
 [![Thunderstore Version](https://img.shields.io/thunderstore/v/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)
 [![Thunderstore Downloads](https://img.shields.io/thunderstore/dt/Ryokune/Liquid_Labyrinth?style=for-the-badge&logo=thunderstore&logoColor=white)](https://thunderstore.io/c/lethal-company/p/Ryokune/Liquid_Labyrinth/)
 
-## This mod is currently on EARLY-ALPHA, please report any bugs & feel free to give suggestions on the [GitHub](https://github.com/VisualError/LiquidLabyrinth) or Message me on Discord: ryokune
+## This mod is currently on EARLY-ALPHA, please report any bugs & feel free to give suggestions on the [GitHub Repo](https://github.com/VisualError/LiquidLabyrinth) or Message me on Discord: ryokune
 
 ### Known bugs
 - Toast bugged
 - Bottle physics gets disabled when ship is moving (Needed to do this because the bottle would bug out of existence)
-- Revive could be bugged.
 
-### Planning
-- Liquid API
-- Procedurally generated liquids
-- Newly added dungeons
-- Tools to inspect and change liquid properties
-- Locally named liquids for clients
 - [FULL CHANGELOG](https://github.com/VisualError/LiquidLabyrinth/blob/main/CHANGELOG.md)
 ## Installation
 
